@@ -1,7 +1,7 @@
 # ⚡ Denki Pipeline Designer
 
 <p align="center">
-  <em>Diseña pipelines de datos y modelos de Machine Learning arrastrando nodos,<br/>no escribiendo scripts.</em>
+  <em>Diseña pipelines de datos — con pasos de Machine Learning incluidos — arrastrando nodos,<br/>no escribiendo scripts.</em>
 </p>
 
 <p align="center">
@@ -30,7 +30,7 @@
 
 ## ✨ ¿Qué es Denki?
 
-**Denki** es una aplicación de escritorio Electron que te deja **diseñar visualmente pipelines de transformación de datos** (sobre [Polars](https://pola.rs)) y **modelos de Machine Learning**, conectando nodos en un canvas al estilo n8n/Node-RED — y ejecutarlos de verdad contra un backend Python local.
+**Denki** es una aplicación de escritorio Electron que te deja **diseñar visualmente pipelines de transformación de datos** (sobre [Polars](https://pola.rs)) — **incluyendo pasos de Machine Learning como nodos más del mismo pipeline** — conectando nodos en un canvas al estilo n8n/Node-RED, y ejecutarlos de verdad contra un backend Python local.
 
 El canvas serializa el grafo de nodos a un contrato JSON (`GraphDocument`) que el backend interpreta como un **árbol de sintaxis abstracta (AST)** de operaciones Polars. De ahí el nombre "AST Editor" que vas a ver por todo el código. 🌳
 
