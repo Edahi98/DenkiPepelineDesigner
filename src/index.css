@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+    --color-beige: #e5e5e5;
+    --color-dark: #121212;
+    --color-teal: #38bdf8; /* vibrant blue */
+    --color-purple: #c084fc;
+    --color-gray: #9ca3af;
+    --color-pink: #f472b6;
+    --color-blue: #60a5fa;
+
+    /* Playful Vibrant Theme Colors */
+    --color-vibrant-pink: #ec4899;
+    --color-vibrant-purple: #8b5cf6;
+    --color-vibrant-blue: #3b82f6;
+    --color-vibrant-teal: #14b8a6;
+    --color-vibrant-orange: #f97316;
+    --color-vibrant-yellow: #eab308;
+    
+    --color-dark-glass: rgba(15, 23, 42, 0.4);
+    --color-light-glass: rgba(255, 255, 255, 0.15);
+}
+
+@layer base {
+    body {
+        @apply text-white font-sans antialiased m-0 overflow-hidden;
+        padding-top: 36px;
+        box-sizing: border-box;
+        height: 100vh;
+        background: linear-gradient(109.6deg, rgba(39, 14, 54, 0.75) 11.2%, rgba(20, 29, 88, 0.75) 100.2%), url('./assets/fondo2.png');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+}
+
+/* Base Glassmorphism - clean and modern */
+.glass-panel {
+    background: var(--color-dark-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* For lighter panels inside dark glass */
+.glass-panel-light {
+    background: var(--color-light-glass);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__node {
+    border-radius: 12px;
+}
+
+/* Soft colorful connections */
+.react-flow__edge-path {
+    stroke: rgba(255, 255, 255, 0.6) !important;
+    stroke-width: 3 !important;
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.4));
+}
+.react-flow__edge.selected .react-flow__edge-path {
+    stroke: #fff !important;
+    stroke-width: 4 !important;
+    filter: drop-shadow(0 0 8px #fff);
+}
+
+/* Hide default attribution */
+.react-flow__attribution {
+    display: none;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
