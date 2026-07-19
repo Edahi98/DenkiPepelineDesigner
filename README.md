@@ -17,6 +17,7 @@
 ## 📖 Tabla de contenidos
 
 - [✨ ¿Qué es Denki?](#-qué-es-denki)
+- [📸 Vistazo rápido](#-vistazo-rápido)
 - [🧩 Características](#-características)
 - [🏗️ Arquitectura](#️-arquitectura)
 - [📂 Estructura del proyecto](#-estructura-del-proyecto)
@@ -33,6 +34,31 @@
 **Denki** es una aplicación de escritorio Electron que te deja **diseñar visualmente pipelines de transformación de datos** (sobre [Polars](https://pola.rs)) — **incluyendo pasos de Machine Learning como nodos más del mismo pipeline** — conectando nodos en un canvas al estilo n8n/Node-RED, y ejecutarlos de verdad contra un backend Python local.
 
 El canvas serializa el grafo de nodos a un contrato JSON (`GraphDocument`) que el backend interpreta como un **árbol de sintaxis abstracta (AST)** de operaciones Polars. De ahí el nombre "AST Editor" que vas a ver por todo el código. 🌳
+
+## 📸 Vistazo rápido
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="img/imagen1.png" alt="Canvas de diseño con nodos conectados">
+      <p align="center">🎨 <b>El canvas</b> — arrastra nodos desde la paleta y conéctalos para armar el pipeline</p>
+    </td>
+    <td width="50%">
+      <img src="img/imagen2.png" alt="Modal de resultado con toggle Polars/SQL">
+      <p align="center">📊 <b>Resultado de ejecución</b> — inspecciona el DataFrame/Series resultante, o su equivalente en SQL</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="img/imagen3.png" alt="Biblioteca de ejemplos de pipelines">
+      <p align="center">🧪 <b>Biblioteca de ejemplos</b> — pipelines listos para cargar y aprender de ellos</p>
+    </td>
+    <td width="50%">
+      <img src="img/imagen4.png" alt="Manual de referencia de nodos">
+      <p align="center">📖 <b>Manual de nodos</b> — ayuda contextual por categoría, con flujos típicos de un click</p>
+    </td>
+  </tr>
+</table>
 
 ## 🧩 Características
 
