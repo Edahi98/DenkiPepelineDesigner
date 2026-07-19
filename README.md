@@ -29,7 +29,7 @@
 
 ## ✨ ¿Qué es Denki?
 
-**Denki** (nombre en código del repo: `Bulma`) es una aplicación de escritorio Electron que te deja **diseñar visualmente pipelines de transformación de datos** (sobre [Polars](https://pola.rs)) y **modelos de Machine Learning**, conectando nodos en un canvas al estilo n8n/Node-RED — y ejecutarlos de verdad contra un backend Python local.
+**Denki** es una aplicación de escritorio Electron que te deja **diseñar visualmente pipelines de transformación de datos** (sobre [Polars](https://pola.rs)) y **modelos de Machine Learning**, conectando nodos en un canvas al estilo n8n/Node-RED — y ejecutarlos de verdad contra un backend Python local.
 
 El canvas serializa el grafo de nodos a un contrato JSON (`GraphDocument`) que el backend interpreta como un **árbol de sintaxis abstracta (AST)** de operaciones Polars. De ahí el nombre "AST Editor" que vas a ver por todo el código. 🌳
 
@@ -80,7 +80,7 @@ flowchart LR
 
 ### 🧱 Capas de código (base → consumidores)
 
-Este es, literalmente, el orden topológico que siguió el historial de commits del repo:
+Así se relacionan las capas del código, de lo más base a lo más consumido:
 
 ```mermaid
 flowchart TB
@@ -172,7 +172,7 @@ npm install
 
 ## 📝 Convención de commits
 
-El historial sigue **[Conventional Commits](https://www.conventionalcommits.org/)** con scopes propios del dominio, aplicados en **orden topológico**: cada commit depende solo de código ya commiteado en uno anterior — el árbol de dependencias real (mapeado con [Codegraph](https://github.com)), no la estructura de carpetas.
+Este proyecto adopta **[Conventional Commits](https://www.conventionalcommits.org/)** con scopes propios del dominio, pensados para reflejar el árbol de dependencias real del código (mapeado con [Codegraph](https://github.com)) en vez de la estructura de carpetas.
 
 | Tipo · scope | Se usa para |
 |---|---|
@@ -187,7 +187,7 @@ El historial sigue **[Conventional Commits](https://www.conventionalcommits.org/
 | `feat(app)` | Shell de la aplicación |
 | `docs` | Documentación |
 
-Ejemplos reales del historial:
+Ejemplos:
 
 ```text
 feat(shared-algo): add canvas-to-AST graph builder
