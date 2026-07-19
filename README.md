@@ -22,6 +22,7 @@
 - [📂 Estructura del proyecto](#-estructura-del-proyecto)
 - [🚀 Empezando](#-empezando)
 - [📝 Convención de commits](#-convención-de-commits)
+- [🔗 Proyectos relacionados](#-proyectos-relacionados)
 - [🗺️ Documentos relacionados](#️-documentos-relacionados)
 - [📜 Licencia](#-licencia)
 
@@ -168,7 +169,7 @@ npm install
 | `npm run publish` | 🚢 Publica una release |
 | `npm run lint` | 🔍 ESLint sobre todo `.ts`/`.tsx` |
 
-> ⚠️ **Sobre `bin/`**: `tsubasa.exe`, `xmljava.exe` y el Python embebido **no están versionados en este repositorio** — pesan más de 1GB en conjunto y algunos binarios superan el límite de 100MB de GitHub. Colócalos manualmente en `bin/` antes de correr `npm start`. Detalle completo en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+> ⚠️ **Sobre `bin/`**: `tsubasa.exe` (compilado desde [TsubasaEngine](https://github.com/Edahi98/TsubasaEngine)), `xmljava.exe` y el Python embebido **no están versionados en este repositorio** — pesan más de 1GB en conjunto y algunos binarios superan el límite de 100MB de GitHub. Descárgalos como assets del [release `v0.1.0`](../../releases/tag/v0.1.0) o colócalos manualmente en `bin/` antes de correr `npm start`. Detalle completo en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## 📝 Convención de commits
 
@@ -195,6 +196,10 @@ feat(main): add Python interpreter service
 feat(ast-editor): add node handle atom and AST node card
 feat(app): add app shell, editor page, renderer, assets
 ```
+
+## 🔗 Proyectos relacionados
+
+- 🐍 **[TsubasaEngine](https://github.com/Edahi98/TsubasaEngine)** — el motor de ejecución (`tsubasa.exe`) que este proyecto arranca y consume vía IPC/HTTP. Contiene el código fuente del intérprete de AST sobre Polars (`polars_ast`), su extensión nativa en Rust (`series_ast`) y la API Flask que `main/services/api-client.ts` y `main/services/backend-manager.ts` orquestan desde aquí.
 
 ## 🗺️ Documentos relacionados
 
