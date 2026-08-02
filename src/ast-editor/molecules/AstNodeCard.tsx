@@ -220,9 +220,11 @@ interface NodeHandlesProps {
  * of individual Series nodes, not part of the DF/Expr port contract
  * this registry exists to keep in sync with Tsubasa. */
 const SERIES_EXTRA_TARGETS: Record<string, { handleId: string; label: string }[]> = {
-    contains_any: [{ handleId: "patterns_series", label: "patterns" }],
-    is_in: [{ handleId: "values_series", label: "vals" }],
     append: [{ handleId: "other", label: "other" }],
+    combine_conditions: [{ handleId: "cond_in", label: "conds" }],
+    is_in: [{ handleId: "values_series", label: "values" }],
+    contains_any: [{ handleId: "patterns_series", label: "patterns" }],
+    series_filter: [{ handleId: "predicate", label: "pred" }],
     // get_column is the DF -> Series bridge: this is the real DataFrame
     // the column is read from. dag_builder.ts's findDfBridgeSource reads
     // this same handle id to wire the backend's df_source. Rendered as
@@ -245,6 +247,8 @@ const SERIES_CHAIN_ROOTS = new Set(["get_column", "from_list", "from_scalar"]);
 const spread = (i: number, n: number) => (n <= 1 ? 0 : (i - (n - 1) / 2) * 26);
 
 const NodeHandles = ({ nodeType, isExpression }: NodeHandlesProps) => {
+    const extraTargets = SERIES_EXTRA_TARGETS[nodeType] ?? [];
+
     if (hasDeclaredPorts(nodeType)) {
         const outPorts = outgoingPortsFor(nodeType);
 
@@ -284,7 +288,6 @@ const NodeHandles = ({ nodeType, isExpression }: NodeHandlesProps) => {
     }
 
     if (isExpression) {
-        const extraTargets = SERIES_EXTRA_TARGETS[nodeType] ?? [];
         const isChainRoot = SERIES_CHAIN_ROOTS.has(nodeType);
         return (
             <>

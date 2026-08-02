@@ -20,4 +20,13 @@ export function registerDatasetHandlers(datasetExtractor: DatasetExtractor): voi
       throw error;
     }
   });
+
+  ipcMain.handle(IPC_CHANNELS.datasetGetColumnValues, async (_, filePath: string, column: string) => {
+    try {
+      return await datasetExtractor.getColumnValues(filePath, column);
+    } catch (error: any) {
+      console.error('Error in dataset:get-column-values:', error);
+      throw error;
+    }
+  });
 }

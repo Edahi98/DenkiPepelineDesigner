@@ -19,4 +19,5 @@ export const IPC_CHANNELS = {
   apiProcessDocument: 'api:process-document',
   datasetGetColumns: 'dataset:get-columns',
   datasetGetPreview: 'dataset:get-preview',
+  datasetGetColumnValues: 'dataset:get-column-values',
 } as const;

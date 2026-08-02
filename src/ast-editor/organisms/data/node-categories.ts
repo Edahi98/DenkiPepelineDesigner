@@ -211,7 +211,6 @@ export const CATEGORIES: Category[] = [
             { type: "get_column", label: "Get Column", description: "Extract a column from DataFrame", isExpression: true, presetProperties: { name: "" } },
             { type: "from_list", label: "From List", description: "Create Series from list", isExpression: true, presetProperties: { values: "[]", dtype: "String" } },
             { type: "from_scalar", label: "From Scalar", description: "Create Series from scalar", isExpression: true, presetProperties: { value: "", dtype: "String" } },
-            { type: "load_dataset_column", label: "Load Dataset Column", description: "Load file directly to Series", isExpression: true, presetProperties: { path: "", column: "" } }
         ]
     },
     {
@@ -361,7 +360,8 @@ export const CATEGORIES: Category[] = [
             { type: "is_unique", label: "Is Unique", description: "Check uniqueness", isExpression: true },
             { type: "is_duplicated", label: "Is Duplicated", description: "Check duplicates", isExpression: true },
             { type: "unique", label: "Unique", description: "Drop duplicates", isExpression: true, presetProperties: { maintain_order: false } },
-            { type: "series_filter", label: "Filter (Series)", description: "Filter Series by predicate", isExpression: true }
+            { type: "series_filter", label: "Filter (Series)", description: "Filter Series by predicate", isExpression: true, presetProperties: { self_filter: false } },
+            { type: "combine_conditions", label: "Combine Conditions", description: "Combine multiple boolean series with AND/OR/XOR/NOT", isExpression: true, presetProperties: { operator: "AND" } }
         ]
     },
     {

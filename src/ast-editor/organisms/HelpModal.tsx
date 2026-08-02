@@ -340,6 +340,73 @@ export const HelpModal: React.FC<HelpModalProps> = ({
                                                 </div>
                                             )}
 
+                                            {/* Guía de conexión para combine_conditions */}
+                                            {item.type === "combine_conditions" && (
+                                                <div className="flex flex-col gap-2 p-3 mt-1 rounded-lg border border-violet-500/20 bg-violet-950/20">
+                                                    <span className="text-[9px] font-bold text-violet-300 uppercase tracking-wider flex items-center gap-1.5">
+                                                        <Link2 className="w-3 h-3" />
+                                                        Cómo combinar condiciones booleanas
+                                                    </span>
+
+                                                    {/* Caso simple: un operador */}
+                                                    <p className="text-[10px] text-zinc-300">
+                                                        <strong className="text-violet-200">Caso simple</strong> — todas las condiciones con el mismo operador:
+                                                    </p>
+                                                    <pre className="text-[10px] font-mono text-zinc-300 bg-zinc-950/80 p-2.5 rounded border border-white/5 whitespace-pre overflow-x-auto">
+{`   [is_in]   [contains_any]   [is_between]
+       │             │               │
+       └─────────────┴───────────────┘
+                     │  (puerto "conds")
+                     ▼
+          ┌──────────────────────┐
+          │  combine_conditions  │  ← operator: AND
+          └──────────┬───────────┘
+                     │
+                     ▼
+           [series_filter  pred]`}
+                                                    </pre>
+
+                                                    {/* Caso complejo: árbol de operadores */}
+                                                    <p className="text-[10px] text-zinc-300 mt-1">
+                                                        <strong className="text-violet-200">Caso complejo</strong> — operadores mixtos → anida nodos:
+                                                    </p>
+                                                    <pre className="text-[10px] font-mono text-zinc-300 bg-zinc-950/80 p-2.5 rounded border border-white/5 whitespace-pre overflow-x-auto">
+{`   [A]    [B]              [C]
+    │       │                │
+    └───────┘                │
+         │                   │
+         ▼                   │
+  ┌─────────────┐            │
+  │ comb. AND   │            │
+  └──────┬──────┘            │
+         │                   │
+         └───────────────────┘
+                   │  (puerto "conds")
+                   ▼
+        ┌─────────────────────┐
+        │    comb. OR         │  ← resultado: (A AND B) OR C
+        └──────────┬──────────┘
+                   ▼
+         [series_filter  pred]`}
+                                                    </pre>
+
+                                                    <div className="flex flex-col gap-1.5 text-[10px] text-zinc-300 mt-1">
+                                                        <div>
+                                                            <strong className="text-violet-200">Regla clave:</strong>{" "}
+                                                            un nodo = un operador para <em>todas</em> sus entradas. Para mezclar AND + OR, encadena dos nodos.
+                                                        </div>
+                                                        <div>
+                                                            <strong className="text-violet-200">NOT:</strong>{" "}
+                                                            solo usa <strong>la primera</strong> condición conectada — conecta únicamente una.
+                                                        </div>
+                                                        <div>
+                                                            <strong className="text-violet-200">Sin límite:</strong>{" "}
+                                                            puedes conectar tantas series booleanas como necesites al puerto <code className="font-mono text-violet-300">conds</code>.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Guía de conexión para nodos Exportadores */}
                                             {["write_csv", "write_excel", "write_html"].includes(item.type) && (
                                                 <div className="flex flex-col gap-2 p-3 mt-1 rounded-lg border border-emerald-500/20 bg-emerald-950/20">

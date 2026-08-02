@@ -13,5 +13,6 @@ export const desktopAdapter: DesktopAdapter = {
   processDocument: (filePath) => d.processDocument(filePath),
   getDatasetColumns: (path) => d.getDatasetColumns(path),
   getDatasetPreview: (path) => d.getDatasetPreview(path),
+  getDatasetColumnValues: (path, column) => d.getDatasetColumnValues(path, column),
   downloadFile: (sourcePath, defaultName) => d.downloadFile(sourcePath, defaultName),
 };

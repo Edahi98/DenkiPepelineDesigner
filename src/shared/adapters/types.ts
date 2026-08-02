@@ -9,5 +9,6 @@ export interface DesktopAdapter {
   processDocument(filePath: string): Promise<string[]>;
   getDatasetColumns(filePath: string): Promise<string[]>;
   getDatasetPreview(filePath: string): Promise<Record<string, any[]>>;
+  getDatasetColumnValues(filePath: string, column: string): Promise<any[]>;
   downloadFile(sourcePath: string, defaultName?: string): Promise<void>;
 }

@@ -5,7 +5,7 @@ import { desktopAdapter } from "../adapters/desktop-adapter";
  * Opens the native "select a file" dialog restricted to `extensions`
  * and, if the user picked one, calls `onSelected` with the chosen path.
  * Was duplicated as a local `handleBrowse` in FileReaderForm (and, in
- * spirit, in ScanForm/LoadDatasetColumnForm's `useDatasetPathFetch`) —
+ * spirit, in ScanForm/IsInForm's `useDatasetPathFetch`) —
  * one hook for "browse for a file, then do something with its path".
  */
 export function useFileBrowse(extensions: readonly string[], onSelected: (path: string) => void) {
