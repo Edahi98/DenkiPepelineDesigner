@@ -289,12 +289,14 @@ export function classifySeriesInputs(
         const src = srcNode(e);
         return !!src && isSeriesNode(src);
     });
+    const isMask = (e: Edge) => {
+        const src = srcNode(e);
+        return !!src && BOOLEAN_MASK_SERIES_TYPES.has(src.data.nodeType);
+    };
 
-    if (nodes.find(n => n.id === nodeId)?.data.nodeType === "combine_conditions") {
-        const isMask = (e: Edge) => {
-            const src = srcNode(e);
-            return !!src && BOOLEAN_MASK_SERIES_TYPES.has(src.data.nodeType);
-        };
+    const nodeType = nodes.find(n => n.id === nodeId)?.data.nodeType;
+
+    if (nodeType === "combine_conditions") {
         // Left-to-right canvas order, so `NOT` (which uses conditions[0])
         // and any future order-sensitive operator are deterministic.
         const byPosition = (a: Edge, b: Edge) => {
@@ -310,11 +312,30 @@ export function classifySeriesInputs(
 
     const isChainLink = (e: Edge) =>
         !e.targetHandle || e.targetHandle === "expr-in" || e.targetHandle === "dataflow-in";
-    return {
-        mainEdge: fromSeries.find(isChainLink),
-        condEdges: [],
-        paramEdges: fromSeries.filter(e => !isChainLink(e)),
-    };
+    let mainEdge = fromSeries.find(isChainLink);
+    let paramEdges = fromSeries.filter(e => !isChainLink(e));
+
+    // series_filter's `pred` handle sits a few pixels from its chain input, and
+    // a chain link dropped on it is recorded faithfully as `predicate` - the
+    // edge is visibly drawn, so nothing looks wrong. A predicate has to be a
+    // Boolean mask, so a non-Boolean node there can only ever be the series
+    // *being* filtered, and is dropped as a predicate either way:
+    //   - nothing on the chain input: it *is* the chain link, so promote it.
+    //     Otherwise the chain has no root and fails far away as a
+    //     ColumnNotFound against a synthetic stub.
+    //   - something already on the chain input, often that same node: the edge
+    //     was redrawn onto the right handle without the old one being deleted.
+    //     Keeping the leftover guarantees `chain.filter(chain)`.
+    // A Boolean node on `pred` is left exactly as drawn.
+    if (nodeType === "series_filter") {
+        const misplaced = paramEdges.filter(e => e.targetHandle === "predicate" && !isMask(e));
+        if (misplaced.length > 0) {
+            paramEdges = paramEdges.filter(e => !misplaced.includes(e));
+            if (!mainEdge) mainEdge = misplaced[0];
+        }
+    }
+
+    return { mainEdge, condEdges: [], paramEdges };
 }
 
 /** Walks a Series chain's "main chain" link (the same one `buildSeriesChain`
