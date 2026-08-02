@@ -45,6 +45,7 @@ export const NODE_TYPE_COLORS: Record<string, { bg: string; border: string; text
     bottom_k:     { bg: "#10b981", border: "#059669", text: "#000000", icon: "ChevronsDown" },
     collect:      { bg: "#3b82f6", border: "#2563eb", text: "#000000", icon: "Download" },
     describe:     { bg: "#8b5cf6", border: "#7c3aed", text: "#000000", icon: "Info" },
+    branch:       { bg: "#f59e0b", border: "#d97706", text: "#000000", icon: "GitBranch" },
     rechunk:      { bg: "#f59e0b", border: "#d97706", text: "#000000", icon: "RefreshCw" },
     strict_cast:  { bg: "#f59e0b", border: "#d97706", text: "#000000", icon: "ArrowRightLeft" },
     to_physical:  { bg: "#f59e0b", border: "#d97706", text: "#000000", icon: "RefreshCw" },
@@ -85,6 +86,9 @@ export const NODE_TYPE_COLORS: Record<string, { bg: string; border: string; text
     from_scalar:         { bg: "#3b82f6", border: "#2563eb", text: "#000000", icon: "Hash" },
     series_filter:       { bg: "#ec4899", border: "#db2777", text: "#000000", icon: "Filter" },
     combine_conditions:  { bg: "#7c3aed", border: "#6d28d9", text: "#ffffff", icon: "Merge" },
+    series_arith: { bg: "#7c3aed", border: "#6d28d9", text: "#ffffff", icon: "Calculator" },
+    series_compare: { bg: "#7c3aed", border: "#6d28d9", text: "#ffffff", icon: "Ampersand" },
+    series_alias: { bg: "#8b5cf6", border: "#7c3aed", text: "#000000", icon: "Tag" },
 
     // Numeric operations
     abs:          { bg: "#8b5cf6", border: "#7c3aed", text: "#000000", icon: "Calculator" },
