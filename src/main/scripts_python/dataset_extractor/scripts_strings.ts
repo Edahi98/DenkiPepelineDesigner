@@ -35,6 +35,24 @@ try:
     print(json.dumps(result_dict, default=str))
 `;
 
+export const getDatasetColumnValuesSetup = (filePath: string, column: string): string => `
+file_path = r'''${filePath}'''
+column = r'''${column}'''
+`;
+
+export const DATASET_COLUMN_VALUES_LOGIC = `
+try:
+    if file_path.lower().endswith('.csv'):
+        df = pl.scan_csv(file_path).select(column).collect()
+    elif file_path.lower().endswith('.parquet'):
+        df = pl.scan_parquet(file_path).select(column).collect()
+    else:
+        print(json.dumps({"error": "Formato no soportado"}))
+        sys.exit(1)
+    values = df[column].to_list()
+    print(json.dumps(values, default=str))
+`;
+
 export const DATASET_EXTRACTOR_OUTPUT = `
 except Exception as e:
     print(json.dumps({"error": str(e)}))

@@ -1,6 +1,6 @@
 import type { Node, Edge } from "reactflow";
 import type { AstNodeData } from "../types/ast_types";
-import { isSeriesNode, buildSeriesChain, buildExprOrSeriesChain, findDfBridgeSourceId, seriesChainRoot } from "../utils/flow_to_ast";
+import { isSeriesNode, buildSeriesChain, buildExprOrSeriesChain, findDfBridgeSourceId, seriesChainRoot, classifySeriesInputs, normalizeCombineConditionEdges } from "../utils/flow_to_ast";
 import {
     incomingPortsFor,
     outgoingPortsFor,
@@ -51,11 +51,12 @@ export interface GraphDocument {
 
 /**
  * Root-to-terminal ordered ids of a Series chain, walking the "main
- * chain" link backward from `terminalId`. Mirrors `buildSeriesChain`'s
- * own traversal exactly (same handle/source conditions) so its output
- * array lines up index-for-index with the ids returned here. A free
- * function (not a `GraphDocumentBuilder` method) since `findLeafNodes`
- * needs it before any builder instance exists.
+ * chain" link backward from `terminalId`. Threads the chain through the
+ * same `classifySeriesInputs` `buildSeriesChain` uses, so its output
+ * array lines up index-for-index with the ids returned here — the two
+ * cannot drift apart on what counts as a chain link. A free function
+ * (not a `GraphDocumentBuilder` method) since `findLeafNodes` needs it
+ * before any builder instance exists.
  */
 function seriesChainIds(terminalId: string, nodes: Node<AstNodeData>[], edges: Edge[]): string[] {
     const ids: string[] = [];
@@ -66,12 +67,7 @@ function seriesChainIds(terminalId: string, nodes: Node<AstNodeData>[], edges: E
         const node = nodes.find(n => n.id === currentId);
         if (!node || !isSeriesNode(node)) break;
         ids.unshift(currentId);
-        const incoming = edges.filter(e => e.target === currentId);
-        const mainEdge = incoming.find(e => {
-            const src = nodes.find(n => n.id === e.source);
-            return !!src && isSeriesNode(src) &&
-                (!e.targetHandle || e.targetHandle === "expr-in" || e.targetHandle === "dataflow-in");
-        });
+        const { mainEdge } = classifySeriesInputs(currentId, nodes, edges);
         currentId = mainEdge ? mainEdge.source : null;
     }
     return ids;
@@ -90,7 +86,9 @@ function isClaimedByDfBridge(rootId: string, nodes: Node<AstNodeData>[], edges: 
     return edges.some(e => {
         if (e.target !== rootId || e.targetHandle === "df_source") return false;
         const src = nodes.find(n => n.id === e.source);
-        return !!src && !src.data.isExpression && !isSeriesNode(src);
+        if (!src || src.data.isExpression || isSeriesNode(src)) return false;
+        const outPorts = outgoingPortsFor(src.data.nodeType);
+        return src.data.nodeType === "to_frame" || outPorts.length > 0;
     });
 }
 
@@ -257,11 +255,16 @@ function buildBaseStep(type: string, properties: Record<string, any>): StepJSON 
 export class GraphDocumentBuilder {
     private readonly nodesById: Record<string, StepJSON> = {};
     private readonly visited = new Set<string>();
+    private readonly edges: Edge[];
 
     constructor(
         private readonly nodes: Node<AstNodeData>[],
-        private readonly edges: Edge[],
-    ) {}
+        edges: Edge[],
+    ) {
+        // Canonicalise once, here, so leaf detection and every chain walk
+        // below share one view of the canvas — see the function's docs.
+        this.edges = normalizeCombineConditionEdges(nodes, edges);
+    }
 
     private node(id: string): Node<AstNodeData> | undefined {
         return this.nodes.find(n => n.id === id);

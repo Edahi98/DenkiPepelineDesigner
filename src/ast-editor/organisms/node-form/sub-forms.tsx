@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Database, FolderSearch, FileText } from "lucide-react";
-import { TextField, SelectField } from "../../molecules/PropertyField";
+import { TextField, SelectField, ListField, SwitchField } from "../../molecules/PropertyField";
 import { ActionButton } from "../../../shared/atoms/ActionButton";
 import { IconDeleteButton } from "../../../shared/atoms/IconDeleteButton";
 import { DashedAddButton } from "../../../shared/atoms/DashedAddButton";
 import { desktopAdapter } from "../../../shared/adapters/desktop-adapter";
-import { eventBus } from "../../../shared/utils/event_bus";
 import { useDatasetPathFetch } from "./hooks/useDatasetPathFetch";
 import { COMMON_CALL_METHODS, CALL_PATTERN_FIELDS } from "./data/call-form-data";
 
@@ -13,80 +12,226 @@ import { COMMON_CALL_METHODS, CALL_PATTERN_FIELDS } from "./data/call-form-data"
 // Sub-forms for complex node types (no raw JSON)
 // ──────────────────────────────────────────────────────────────────
 
-/** LoadDatasetColumn node: select path and column */
-export function LoadDatasetColumnForm({
+
+/** IsIn node: inline value list + file loader that populates values */
+export function IsInForm({
     editValues,
     onFieldChange,
 }: {
     editValues: Record<string, any>;
     onFieldChange: (key: string, value: any) => void;
 }) {
+    const [localPath, setLocalPath] = useState<string>("");
     const [columns, setColumns] = useState<string[]>([]);
-    const { isLoading, error, runFetch, browseForFile } = useDatasetPathFetch(
-        (path) => desktopAdapter.getDatasetColumns(path),
-        (cols) => {
-            setColumns(cols);
-            eventBus.notify("COLUMNS_CHANGED", cols);
-        },
-        () => {
-            setColumns([]);
-            eventBus.notify("COLUMNS_CHANGED", []);
-        },
-        "Failed to load columns",
-    );
-
-    // If path is already there, load columns
-    useEffect(() => {
-        if (editValues.path) {
-            runFetch(editValues.path);
-        }
-    }, []); // Only on mount
+    const [selectedColumn, setSelectedColumn] = useState<string>("");
+    const [isLoadingColumns, setIsLoadingColumns] = useState(false);
+    const [isLoadingValues, setIsLoadingValues] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleBrowse = async () => {
-        const path = await browseForFile();
-        if (path) {
-            onFieldChange("path", path);
-            runFetch(path);
+        const path = await desktopAdapter.selectFile(['csv', 'parquet']);
+        if (!path) return;
+        setLocalPath(path);
+        setColumns([]);
+        setSelectedColumn("");
+        setError(null);
+        setIsLoadingColumns(true);
+        try {
+            const cols = await desktopAdapter.getDatasetColumns(path);
+            setColumns(cols);
+        } catch (e: any) {
+            setError(e.message || "Failed to load columns");
+        } finally {
+            setIsLoadingColumns(false);
+        }
+    };
+
+    const handleColumnSelect = async (column: string) => {
+        setSelectedColumn(column);
+        if (!column || !localPath) return;
+        setError(null);
+        setIsLoadingValues(true);
+        try {
+            const vals = await desktopAdapter.getDatasetColumnValues(localPath, column);
+            onFieldChange("values", JSON.stringify(vals));
+        } catch (e: any) {
+            setError(e.message || "Failed to load values");
+        } finally {
+            setIsLoadingValues(false);
         }
     };
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col gap-2">
-                <ActionButton icon={<FolderSearch className="w-4 h-4" />} onClick={handleBrowse} tone="blue">
-                    Browse Dataset File...
-                </ActionButton>
-                {editValues.path && (
-                    <div className="text-sm bg-blue-500/10 shadow-md border border-blue-500/30 p-2.5 rounded-lg text-blue-300 break-all font-mono text-[10px]">
-                        <strong className="text-pink-400 mr-2 uppercase tracking-wide text-xs">Selected:</strong>
-                        {editValues.path.split(/[\\/]/).pop()}
-                    </div>
-                )}
+            <ListField
+                label="Values"
+                value={editValues.values || "[]"}
+                onChange={(v) => onFieldChange("values", v)}
+                placeholder="Enter a value..."
+            />
+
+            <div className="border-t border-white/10 pt-3">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    Load from file
+                </div>
+                <div className="flex flex-col gap-2">
+                    <ActionButton
+                        icon={<FolderSearch className="w-4 h-4" />}
+                        onClick={handleBrowse}
+                        disabled={isLoadingColumns}
+                        tone="blue"
+                    >
+                        {isLoadingColumns ? "Loading columns..." : "Browse Dataset File..."}
+                    </ActionButton>
+
+                    {localPath && (
+                        <div className="font-mono text-[10px] text-blue-300 bg-blue-500/10 border border-blue-500/30 p-2.5 rounded-lg break-all">
+                            <strong className="text-pink-400 mr-2 uppercase tracking-wide text-xs">File:</strong>
+                            {localPath.split(/[\\/]/).pop()}
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded">
+                            {error}
+                        </div>
+                    )}
+
+                    {columns.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-white drop-shadow-sm flex items-center gap-2">
+                                Column
+                                {isLoadingValues && <span className="text-emerald-400 animate-pulse text-[10px]">(Loading values...)</span>}
+                            </label>
+                            <select
+                                value={selectedColumn}
+                                onChange={(e) => handleColumnSelect(e.target.value)}
+                                className="w-full glass-panel border border-pink-500/50 rounded-lg px-2.5 py-1.5 text-xs text-white font-bold drop-shadow-sm focus:outline-none focus:border-emerald-500/50"
+                                disabled={isLoadingValues}
+                            >
+                                <option value="">-- Select Column --</option>
+                                {columns.map(col => (
+                                    <option key={col} value={col}>{col}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-white drop-shadow-sm flex items-center gap-2">
-                    Column Name
-                    {isLoading && <span className="text-emerald-400 animate-pulse text-[10px]">(Scanning file...)</span>}
-                </label>
+            <SwitchField
+                label="Nulls Equal"
+                isSelected={!!editValues.nulls_equal}
+                onChange={(v) => onFieldChange("nulls_equal", v)}
+            />
+        </div>
+    );
+}
 
-                {error && (
-                    <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded mb-2">
-                        {error}
-                    </div>
-                )}
+/** ContainsAny node: inline pattern list + file loader */
+export function ContainsAnyForm({
+    editValues,
+    onFieldChange,
+}: {
+    editValues: Record<string, any>;
+    onFieldChange: (key: string, value: any) => void;
+}) {
+    const [localPath, setLocalPath] = useState<string>("");
+    const [columns, setColumns] = useState<string[]>([]);
+    const [selectedColumn, setSelectedColumn] = useState<string>("");
+    const [isLoadingColumns, setIsLoadingColumns] = useState(false);
+    const [isLoadingValues, setIsLoadingValues] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-                <select
-                    value={editValues.column || ""}
-                    onChange={(e) => onFieldChange("column", e.target.value)}
-                    className="w-full glass-panel border border-pink-500/50 rounded-lg px-2.5 py-1.5 text-xs text-white font-bold drop-shadow-sm focus:outline-none focus:border-emerald-500/50"
-                    disabled={columns.length === 0}
-                >
-                    <option value="">-- Seleccionar Columna --</option>
-                    {columns.map(col => (
-                        <option key={col} value={col}>{col}</option>
-                    ))}
-                </select>
+    const handleBrowse = async () => {
+        const path = await desktopAdapter.selectFile(['csv', 'parquet']);
+        if (!path) return;
+        setLocalPath(path);
+        setColumns([]);
+        setSelectedColumn("");
+        setError(null);
+        setIsLoadingColumns(true);
+        try {
+            const cols = await desktopAdapter.getDatasetColumns(path);
+            setColumns(cols);
+        } catch (e: any) {
+            setError(e.message || "Failed to load columns");
+        } finally {
+            setIsLoadingColumns(false);
+        }
+    };
+
+    const handleColumnSelect = async (column: string) => {
+        setSelectedColumn(column);
+        if (!column || !localPath) return;
+        setError(null);
+        setIsLoadingValues(true);
+        try {
+            const vals = await desktopAdapter.getDatasetColumnValues(localPath, column);
+            onFieldChange("patterns", JSON.stringify(vals));
+        } catch (e: any) {
+            setError(e.message || "Failed to load values");
+        } finally {
+            setIsLoadingValues(false);
+        }
+    };
+
+    return (
+        <div className="space-y-4">
+            <ListField
+                label="Patterns"
+                value={editValues.patterns || "[]"}
+                onChange={(v) => onFieldChange("patterns", v)}
+                placeholder="Enter a pattern..."
+            />
+
+            <div className="border-t border-white/10 pt-3">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    Load from file
+                </div>
+                <div className="flex flex-col gap-2">
+                    <ActionButton
+                        icon={<FolderSearch className="w-4 h-4" />}
+                        onClick={handleBrowse}
+                        disabled={isLoadingColumns}
+                        tone="blue"
+                    >
+                        {isLoadingColumns ? "Loading columns..." : "Browse Dataset File..."}
+                    </ActionButton>
+
+                    {localPath && (
+                        <div className="font-mono text-[10px] text-blue-300 bg-blue-500/10 border border-blue-500/30 p-2.5 rounded-lg break-all">
+                            <strong className="text-pink-400 mr-2 uppercase tracking-wide text-xs">File:</strong>
+                            {localPath.split(/[\\/]/).pop()}
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="text-[10px] text-red-400 bg-red-500/10 border border-red-500/20 p-2 rounded">
+                            {error}
+                        </div>
+                    )}
+
+                    {columns.length > 0 && (
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-semibold text-white drop-shadow-sm flex items-center gap-2">
+                                Column
+                                {isLoadingValues && <span className="text-emerald-400 animate-pulse text-[10px]">(Loading values...)</span>}
+                            </label>
+                            <select
+                                value={selectedColumn}
+                                onChange={(e) => handleColumnSelect(e.target.value)}
+                                className="w-full glass-panel border border-pink-500/50 rounded-lg px-2.5 py-1.5 text-xs text-white font-bold drop-shadow-sm focus:outline-none focus:border-emerald-500/50"
+                                disabled={isLoadingValues}
+                            >
+                                <option value="">-- Select Column --</option>
+                                {columns.map(col => (
+                                    <option key={col} value={col}>{col}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

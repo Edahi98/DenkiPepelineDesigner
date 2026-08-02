@@ -3,10 +3,9 @@ import { desktopAdapter } from "../../../../shared/adapters/desktop-adapter";
 
 /**
  * Shared "browse for a CSV/Parquet file, then run an async lookup
- * against the chosen path" pattern duplicated between `ScanForm`
- * (fetches a data preview) and `LoadDatasetColumnForm` (fetches column
- * names) — same file dialog, same isLoading/error bookkeeping, only the
- * lookup itself and what's done with its result differ per caller.
+ * against the chosen path" pattern used by `ScanForm` (fetches a data
+ * preview) and `IsInForm` (fetches column names) — same file dialog,
+ * same isLoading/error bookkeeping, only the lookup differs per caller.
  */
 export function useDatasetPathFetch<T>(
     fetchForPath: (path: string) => Promise<T>,

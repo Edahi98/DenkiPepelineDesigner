@@ -5,7 +5,9 @@ import {
   getDatasetExtractorSetup,
   DATASET_EXTRACTOR_LOGIC,
   DATASET_PREVIEW_LOGIC,
-  DATASET_EXTRACTOR_OUTPUT
+  DATASET_EXTRACTOR_OUTPUT,
+  getDatasetColumnValuesSetup,
+  DATASET_COLUMN_VALUES_LOGIC,
 } from './scripts_strings';
 
 export class DatasetExtractor {
@@ -38,6 +40,19 @@ export class DatasetExtractor {
         output: DATASET_EXTRACTOR_OUTPUT,
       },
       'DatasetExtractor Preview Error',
+    );
+  }
+
+  public async getColumnValues(filePath: string, column: string): Promise<any[]> {
+    return runPythonScript<any[]>(
+      this.interpreter,
+      {
+        imports: DATASET_EXTRACTOR_IMPORTS,
+        setup: getDatasetColumnValuesSetup(filePath, column),
+        logic: DATASET_COLUMN_VALUES_LOGIC,
+        output: DATASET_EXTRACTOR_OUTPUT,
+      },
+      'DatasetExtractor Column Values Error',
     );
   }
 }

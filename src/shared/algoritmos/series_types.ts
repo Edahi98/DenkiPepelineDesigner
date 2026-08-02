@@ -11,7 +11,7 @@
  */
 export const SERIES_NODE_TYPES: ReadonlySet<string> = new Set([
     // Roots
-    "get_column", "from_list", "from_scalar",
+    "get_column", "from_list", "from_scalar", "combine_conditions",
     // Numeric
     "abs", "sign", "negate", "sqrt", "exp", "log", "log1p", "floor", "ceil", "round", "pow", "clip",
     // Null predicates
@@ -38,14 +38,14 @@ export const SERIES_NODE_TYPES: ReadonlySet<string> = new Set([
     // Misc
     "hash", "rechunk", "append", "lower_bound", "upper_bound", "peak_min", "peak_max", "rank",
     // Strings
-    "str_contains", "str_starts_with", "str_ends_with",
+    "str_contains", "contains_any", "str_starts_with", "str_ends_with",
     "str_strip", "str_lstrip", "str_rstrip",
     "str_to_uppercase", "str_to_lowercase",
     "str_replace", "str_replace_all", "str_slice", "str_split",
     "str_zfill", "str_ljust", "str_rjust",
     "str_count_matches", "str_extract", "str_extract_all",
     "str_json_extract", "str_lengths", "str_n_chars", "str_len_bytes",
-    "str_strptime", "str_decode",
+    "str_strptime", "str_decode", "series_filter", "strict_cast", "to_physical",
     // Datetime
     "dt_year", "dt_month", "dt_day",
     "dt_hour", "dt_minute", "dt_second",
@@ -66,6 +66,21 @@ export const SERIES_NODE_TYPES: ReadonlySet<string> = new Set([
     "struct_field", "struct_rename_fields", "struct_unnest", "struct_json_encode",
     // Bitwise
     "bitwise_and", "bitwise_or", "bitwise_xor",
+]);
+
+/**
+ * Series node types whose expression evaluates to a Boolean mask.
+ *
+ * Mirrors `BOOLEAN_MASK_SERIES_TYPES` in Tsubasa's `polars_ast/base.py`
+ * — keep the two in sync. Bulma reads it to decide which incoming edges
+ * of a `combine_conditions` node are *conditions*, independently of
+ * which handle they were dropped on (see `classifySeriesInputs`).
+ */
+export const BOOLEAN_MASK_SERIES_TYPES: ReadonlySet<string> = new Set([
+    "arr_contains", "combine_conditions", "contains_any", "dt_is_leap_year",
+    "is_between", "is_duplicated", "is_finite", "is_in", "is_infinite",
+    "is_nan", "is_not_null", "is_null", "is_unique", "peak_max", "peak_min",
+    "str_contains", "str_ends_with", "str_starts_with",
 ]);
 
 /**

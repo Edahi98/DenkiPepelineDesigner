@@ -7,7 +7,7 @@ import { ChainForm } from "../../molecules/ChainForm";
 import { FileReaderPanel } from "../../file-reader/FileReaderPanel";
 import { desktopAdapter } from "../../../shared/adapters/desktop-adapter";
 import type { FieldSpec, FormContext, NodeFormEntry } from "./field-spec";
-import { ScanForm, LoadDatasetColumnForm, RenameForm, CallForm } from "./sub-forms";
+import { ScanForm, IsInForm, ContainsAnyForm, RenameForm, CallForm } from "./sub-forms";
 import { DTYPE_OPTIONS_OPTIONAL, DTYPE_OPTIONS_REQUIRED } from "./data/dtype-options";
 import { WRITE_FILE_TYPES, MULTI_ML_TYPES, SUPERVISED_ML_TYPES, VECTORIZER_ML_TYPES, DIMENSIONALITY_ML_TYPES } from "./data/node-type-groups";
 import {
@@ -280,7 +280,6 @@ export const NODE_FORM_SCHEMAS: Record<string, NodeFormEntry> = {
     unpivot: [nameField("Name", "e.g. Total_Sales")],
     to_frame: [nameField("Nombre de la columna (Opcional)", "e.g. output_col")],
     scan: (c) => <ScanForm editValues={c.editValues} onFieldChange={c.handleFieldChange} />,
-    load_dataset_column: (c) => <LoadDatasetColumnForm editValues={c.editValues} onFieldChange={c.handleFieldChange} />,
     file_reader: (c) => (
         <FileReaderPanel
             path={c.editValues.path || ""}
@@ -433,13 +432,34 @@ export const NODE_FORM_SCHEMAS: Record<string, NodeFormEntry> = {
         { kind: "switch", key: "descending", label: "Descending", getValue: (c) => !!c.editValues.descending, onChange: (v, c) => c.handleFieldChange("descending", v) },
         { kind: "text", key: "seed", label: "Seed (for random method)", placeholder: "e.g. 42 (optional)", getValue: (c) => c.editValues.seed !== undefined && c.editValues.seed !== null ? String(c.editValues.seed) : "", onChange: (v, c) => c.handleFieldChange("seed", nullableNumber(v)) },
     ],
-    contains_any: [
-        { kind: "list", key: "patterns", label: "Patterns", getValue: (c) => c.editValues.patterns || "[]", onChange: (v, c) => c.handleFieldChange("patterns", v), placeholder: "Enter a pattern..." },
-    ],
-    is_in: [
-        { kind: "list", key: "values", label: "Values", getValue: (c) => c.editValues.values || "[]", onChange: (v, c) => c.handleFieldChange("values", v), placeholder: "Enter a value..." },
-        { kind: "switch", key: "nulls_equal", label: "Nulls Equal", getValue: (c) => !!c.editValues.nulls_equal, onChange: (v, c) => c.handleFieldChange("nulls_equal", v) },
-    ],
+    contains_any: (c) => <ContainsAnyForm editValues={c.editValues} onFieldChange={c.handleFieldChange} />,
+    is_in: (c) => <IsInForm editValues={c.editValues} onFieldChange={c.handleFieldChange} />,
+    combine_conditions: (c) => {
+        const operator: string = c.editValues.operator || "AND";
+        return (
+            <div className="flex flex-col gap-4">
+                <SelectField
+                    label="Operator"
+                    value={operator}
+                    options={["AND", "OR", "XOR", "NOT"]}
+                    onChange={(v) => c.handleFieldChange("operator", v)}
+                />
+                <p className="text-[10px] text-gray-400">
+                    Conecta las series booleanas al puerto <span className="text-cyan-400 font-semibold">conds</span> del nodo. Puedes conectar tantas como necesites.
+                    {operator === "NOT" && " (NOT aplica solo a la primera condición conectada)"}
+                </p>
+            </div>
+        );
+    },
+    series_filter: (c) => (
+        <div className="flex flex-col gap-4">
+            <ToggleSwitch
+                label="Self Filter — la serie se filtra a sí misma"
+                isSelected={!!c.editValues.self_filter}
+                onChange={(v) => c.handleFieldChange("self_filter", v)}
+            />
+        </div>
+    ),
     is_between: [
         { kind: "text", key: "lower", label: "Lower Bound", placeholder: "e.g. 0", getValue: (c) => c.editValues.lower !== undefined && c.editValues.lower !== null ? String(c.editValues.lower) : "", onChange: (v, c) => c.handleFieldChange("lower", nullableNumber(v)) },
         { kind: "text", key: "upper", label: "Upper Bound", placeholder: "e.g. 100", getValue: (c) => c.editValues.upper !== undefined && c.editValues.upper !== null ? String(c.editValues.upper) : "", onChange: (v, c) => c.handleFieldChange("upper", nullableNumber(v)) },

@@ -1011,15 +1011,13 @@ export const NODE_METADATA_MAP: Record<string, NodeMetadata> = {
         ],
         pipelineExplanation: "Calcula la longitud de cada lista."
     },
-    load_dataset_column: {
-        name: "Load Dataset Column",
-        description: "Carga un archivo (CSV, Parquet, JSON) y extrae una columna específica directamente como Serie.",
-        typicalUse: "Cargar una lista de correos o nombres desde un archivo local.",
+    combine_conditions: {
+        name: "Combine Conditions",
+        description: "Combina múltiples series booleanas usando AND, OR, XOR o NOT. El puerto 'conds' acepta tantas conexiones como necesites — no hay límite. NOT solo usa la primera condición conectada.",
+        typicalUse: "1. Crea las condiciones booleanas (is_in, is_between, contains_any, series_filter, otro combine_conditions, etc.).\n2. Conecta la salida de cada una al puerto 'conds' de este nodo.\n3. Elige el operador en el panel (AND/OR/XOR/NOT).",
         category: "series",
-        pipeline: [
-            { type: "load_dataset_column", label: "Load Dataset Column" }
-        ],
-        pipelineExplanation: "Lee el archivo y devuelve la columna seleccionada."
+        pipeline: [],
+        pipelineExplanation: "Combina condiciones booleanas con el operador seleccionado."
     },
     series_filter: {
         name: "Filter (Series)",
@@ -1034,8 +1032,8 @@ export const NODE_METADATA_MAP: Record<string, NodeMetadata> = {
     },
     is_in: {
         name: "Is In",
-        description: "Verifica si los valores están contenidos dentro de una lista o serie. Puedes ingresar una lista manualmente, O BIEN cargar datos de un dataset: para hacerlo, arrastra un nodo 'Load Dataset Column', selecciona el dataset y columna a buscar, y conéctalo al puerto 'values_series'.",
-        typicalUse: "1. Cargar una columna objetivo.\n2. Conectar un 'Load Dataset Column' al puerto 'values_series' de Is In.\n3. Usar el resultado para un 'Filter (Series)'.",
+        description: "Verifica si los valores de la serie están dentro de una lista. Puedes escribir los valores manualmente o cargarlos desde un archivo CSV/Parquet usando el botón Browse en el panel de propiedades.",
+        typicalUse: "1. Cargar una columna objetivo.\n2. Abrir las propiedades del nodo y cargar los valores desde un archivo o escribirlos manualmente.\n3. Usar el resultado booleano en un Filter (Series).",
         category: "series",
         pipeline: [],
         pipelineExplanation: ""
@@ -1228,8 +1226,8 @@ export function nodeSupportsSql(nodeType: string, properties: Record<string, any
         // Series AST roots (no SQL equivalent)
         "from_list",
         "from_scalar",
-        "load_dataset_column",
         "series_filter",
+        "combine_conditions",
         // Series AST unsupported (no direct SQL equivalent)
         "str_replace_all",
         "str_split",

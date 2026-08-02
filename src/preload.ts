@@ -12,5 +12,6 @@ contextBridge.exposeInMainWorld('desktop', {
   processDocument: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.apiProcessDocument, filePath),
   getDatasetColumns: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.datasetGetColumns, filePath),
   getDatasetPreview: (filePath: string) => ipcRenderer.invoke(IPC_CHANNELS.datasetGetPreview, filePath),
+  getDatasetColumnValues: (filePath: string, column: string) => ipcRenderer.invoke(IPC_CHANNELS.datasetGetColumnValues, filePath, column),
   downloadFile: (sourcePath: string, defaultName?: string) => ipcRenderer.invoke(IPC_CHANNELS.dialogDownloadFile, sourcePath, defaultName),
 });
