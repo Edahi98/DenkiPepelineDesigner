@@ -419,6 +419,17 @@ export class GraphDocumentBuilder {
                 .filter((n): n is Node<AstNodeData> => !!n && isSeriesNode(n));
         }
 
+        // `to_frame` builds one column, so it reads one expression. Wiring
+        // several and keeping `candidates[0]` dropped the rest without a
+        // word — the same single-position slip as the chain input above.
+        if (candidates.length > 1) {
+            throw new Error(
+                `El nodo "${node.data.label}" (to_frame) tiene ${candidates.length} expresiones ` +
+                `conectadas (${candidates.map(c => c.data.label).join(", ")}), y solo construye ` +
+                `una columna. Deja una, o usa un "select" para varias.`,
+            );
+        }
+
         let expr: any = null;
         const externalRefs = new Set<string>();
         if (candidates.length > 0) {
@@ -490,6 +501,20 @@ export class GraphDocumentBuilder {
         for (const port of incomingPortsFor(type)) {
             const edges = this.incoming(id, port.handleId);
             if (port.arity === "single") {
+                // Same rule the Series chain input follows: one edge is the
+                // shape, several from *different* nodes is a question only
+                // the author can answer, and picking the first silently is
+                // how a canvas ends up computing against the wrong upstream.
+                // Several from the same node are a leftover from redrawing.
+                const sources = new Set(edges.map(e => e.source));
+                if (sources.size > 1) {
+                    const names = [...sources].map(s => this.node(s)?.data.label ?? s);
+                    throw new Error(
+                        `El nodo "${node.data.label}" tiene ${sources.size} conexiones distintas ` +
+                        `en su entrada "${port.label}" (${names.join(", ")}), y solo puede usar una. ` +
+                        `Borra las que sobren.`,
+                    );
+                }
                 const e = edges[0];
                 if (e) { this.addNode(e.source); step[port.field] = e.source; }
             } else {
