@@ -312,8 +312,24 @@ export function classifySeriesInputs(
 
     const isChainLink = (e: Edge) =>
         !e.targetHandle || e.targetHandle === "expr-in" || e.targetHandle === "dataflow-in";
-    let mainEdge = fromSeries.find(isChainLink);
+    const chainLinks = fromSeries.filter(isChainLink);
+    let mainEdge = chainLinks[0];
     let paramEdges = fromSeries.filter(e => !isChainLink(e));
+
+    // A chain input takes exactly one edge. Two edges from *different* nodes
+    // is a question only the author can answer, and picking one silently is
+    // how a canvas ends up quietly computing the wrong thing - so say so.
+    // Several edges from the same node are just a leftover from redrawing a
+    // connection, with one unambiguous meaning, and collapse without fuss.
+    const distinctSources = new Set(chainLinks.map(e => e.source));
+    if (distinctSources.size > 1) {
+        const names = [...distinctSources].map(id => srcNode({ source: id } as Edge)?.data.label ?? id);
+        throw new Error(
+            `El nodo "${nodes.find(n => n.id === nodeId)?.data.label ?? nodeId}" tiene ${distinctSources.size} ` +
+            `conexiones distintas en su entrada de cadena (${names.join(", ")}), y solo puede usar una. ` +
+            `Borra las que sobren.`,
+        );
+    }
 
     // series_filter's `pred` handle sits a few pixels from its chain input, and
     // a chain link dropped on it is recorded faithfully as `predicate` - the
