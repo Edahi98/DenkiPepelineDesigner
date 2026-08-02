@@ -271,6 +271,7 @@ export const CATEGORIES: Category[] = [
         items: [
             { type: "is_null", label: "Is Null", description: "Boolean mask for nulls", isExpression: true },
             { type: "is_not_null", label: "Is Not Null", description: "Boolean mask for non-nulls", isExpression: true },
+            { type: "is_nan", label: "Is NaN", description: "Boolean mask for NaN (floats only — null is not NaN)", isExpression: true },
             { type: "fill_null", label: "Fill Null", description: "Replace null values", isExpression: true, presetProperties: { value: null, strategy: null, limit: null } },
             { type: "fill_nan", label: "Fill NaN", description: "Replace NaN values", isExpression: true, presetProperties: { value: 0 } },
             { type: "drop_nulls", label: "Drop Nulls", description: "Remove null values", isExpression: true },
@@ -347,6 +348,8 @@ export const CATEGORIES: Category[] = [
         items: [
             { type: "hash", label: "Hash", description: "Hash each element", isExpression: true, presetProperties: { seed: 0, seed_1: null, seed_2: null, seed_3: null } },
             { type: "rechunk", label: "Rechunk", description: "Rechunk memory", isExpression: true },
+            { type: "strict_cast", label: "Strict Cast", description: "Change dtype, failing instead of nulling on overflow", isExpression: true, presetProperties: { dtype: "Int32" } },
+            { type: "to_physical", label: "To Physical", description: "Underlying physical representation (Categorical to its codes, Date to days)", isExpression: true },
             { type: "append", label: "Append", description: "Append another Series", isExpression: true, presetProperties: { other: null, upcast: true } },
             { type: "lower_bound", label: "Lower Bound", description: "Dtype lower bound", isExpression: true },
             { type: "upper_bound", label: "Upper Bound", description: "Dtype upper bound", isExpression: true },
@@ -421,7 +424,15 @@ export const CATEGORIES: Category[] = [
             { type: "dt_offset_by", label: "Offset By", description: "Offset by duration", isExpression: true, presetProperties: { by: "1d" } },
             { type: "dt_is_leap_year", label: "Is Leap Year", description: "Check leap year", isExpression: true },
             { type: "dt_days_in_month", label: "Days in Month", description: "Days in month", isExpression: true },
-            { type: "dt_quarter", label: "Quarter", description: "Quarter (1-4)", isExpression: true }
+            { type: "dt_quarter", label: "Quarter", description: "Quarter (1-4)", isExpression: true },
+            { type: "dt_combine", label: "Combine", description: "Combine a date with a time into a datetime", isExpression: true, presetProperties: { time: "00:00:00", time_unit: "us" } },
+            { type: "dt_total_days", label: "Total Days", description: "Duration as whole days", isExpression: true },
+            { type: "dt_total_hours", label: "Total Hours", description: "Duration as whole hours", isExpression: true },
+            { type: "dt_total_minutes", label: "Total Minutes", description: "Duration as whole minutes", isExpression: true },
+            { type: "dt_total_seconds", label: "Total Seconds", description: "Duration as whole seconds", isExpression: true },
+            { type: "dt_total_milliseconds", label: "Total Milliseconds", description: "Duration as whole milliseconds", isExpression: true },
+            { type: "dt_total_microseconds", label: "Total Microseconds", description: "Duration as whole microseconds", isExpression: true },
+            { type: "dt_total_nanoseconds", label: "Total Nanoseconds", description: "Duration as whole nanoseconds", isExpression: true }
         ]
     },
     {

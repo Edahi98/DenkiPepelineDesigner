@@ -46,10 +46,13 @@ export const NODE_TYPE_COLORS: Record<string, { bg: string; border: string; text
     collect:      { bg: "#3b82f6", border: "#2563eb", text: "#000000", icon: "Download" },
     describe:     { bg: "#8b5cf6", border: "#7c3aed", text: "#000000", icon: "Info" },
     rechunk:      { bg: "#f59e0b", border: "#d97706", text: "#000000", icon: "RefreshCw" },
+    strict_cast:  { bg: "#f59e0b", border: "#d97706", text: "#000000", icon: "ArrowRightLeft" },
+    to_physical:  { bg: "#f59e0b", border: "#d97706", text: "#000000", icon: "RefreshCw" },
     to_frame:     { bg: "#8b5cf6", border: "#7c3aed", text: "#000000", icon: "TableProperties" },
     write_csv:    { bg: "#10b981", border: "#059669", text: "#000000", icon: "Save" },
     write_excel:  { bg: "#10b981", border: "#059669", text: "#000000", icon: "Save" },
     write_html:   { bg: "#10b981", border: "#059669", text: "#000000", icon: "Save" },
+    write_json:   { bg: "#10b981", border: "#059669", text: "#000000", icon: "Save" },
 
     // ─── Bokeh Visualizations ─────────────────────────────────────────
     bokeh_scatter:   { bg: "#9333ea", border: "#7e22ce", text: "#ffffff", icon: "ScatterChart" },
