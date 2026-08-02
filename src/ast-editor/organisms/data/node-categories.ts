@@ -161,6 +161,7 @@ export const CATEGORIES: Category[] = [
             { type: "top_k", label: "Top K", description: "Keep the K largest rows by column(s)", isExpression: false, presetProperties: { k: 5, by: "" } },
             { type: "bottom_k", label: "Bottom K", description: "Keep the K smallest rows by column(s)", isExpression: false, presetProperties: { k: 5, by: "" } },
             { type: "collect", label: "Collect", description: "Materialize the LazyFrame (checkpoint)", isExpression: false },
+            { type: "branch", label: "Branch (if/else)", description: "Pick one of two grouped pipelines from the shape of the incoming schema", isExpression: false, presetProperties: { condition: "has_column", column: "" } },
             { type: "describe", label: "Describe", description: "Statistical summary of the DataFrame", isExpression: false }
         ]
     },
@@ -364,7 +365,10 @@ export const CATEGORIES: Category[] = [
             { type: "is_duplicated", label: "Is Duplicated", description: "Check duplicates", isExpression: true },
             { type: "unique", label: "Unique", description: "Drop duplicates", isExpression: true, presetProperties: { maintain_order: false } },
             { type: "series_filter", label: "Filter (Series)", description: "Filter Series by predicate", isExpression: true, presetProperties: { self_filter: false } },
-            { type: "combine_conditions", label: "Combine Conditions", description: "Combine multiple boolean series with AND/OR/XOR/NOT", isExpression: true, presetProperties: { operator: "AND" } }
+            { type: "combine_conditions", label: "Combine Conditions", description: "Combine multiple boolean series with AND/OR/XOR/NOT", isExpression: true, presetProperties: { operator: "AND" } },
+            { type: "series_compare", label: "Compare", description: "Boolean mask comparing this Series against a value or another Series", isExpression: true, presetProperties: { op: ">", value: 0 } },
+            { type: "series_arith", label: "Arithmetic", description: "Arithmetic between this Series and a value or another Series", isExpression: true, presetProperties: { op: "+", value: 0 } },
+            { type: "series_alias", label: "Name Series", description: "Name this Series chain, so its output tab is identifiable", isExpression: true, presetProperties: { name: "" } }
         ]
     },
     {
