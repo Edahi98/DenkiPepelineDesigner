@@ -90,6 +90,17 @@ interface ListFieldProps {
     placeholder?: string;
 }
 
+/**
+ * How many chips are rendered, however many values the field holds.
+ *
+ * A dataset column loaded into `is_in`/`contains_any` routinely has
+ * thousands of entries, and rendering one element per entry locked up
+ * the editor. This is a *display* cap only: `value` still carries every
+ * item, so the node serializes and filters against the full list — what
+ * you see is a preview of it, not the data itself.
+ */
+const MAX_VISIBLE_ITEMS = 20;
+
 export const ListField = ({ label, value, onChange, placeholder = "Enter value..." }: ListFieldProps) => {
     const [items, setItems] = useState<string[]>([]);
     const [inputValue, setInputValue] = useState("");
@@ -133,16 +144,36 @@ export const ListField = ({ label, value, onChange, placeholder = "Enter value..
         }
     };
 
+    const hiddenCount = Math.max(0, items.length - MAX_VISIBLE_ITEMS);
+
     return (
         <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-xs text-gray-200 font-semibold font-semibold uppercase tracking-wide">
-                {label}
-            </label>
-            
+            <div className="flex items-center justify-between gap-2">
+                <label className="text-xs text-gray-200 font-semibold font-semibold uppercase tracking-wide">
+                    {label}
+                    {items.length > 0 && (
+                        <span className="ml-1.5 text-gray-400 normal-case font-normal">
+                            ({items.length})
+                        </span>
+                    )}
+                </label>
+                {/* With most of a long list off-screen there is no way to
+                    remove those entries one by one, so offer the bulk exit. */}
+                {hiddenCount > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => { setItems([]); onChange("[]"); }}
+                        className="text-[10px] text-gray-400 hover:text-[#ff0000] transition-colors uppercase tracking-wide"
+                    >
+                        Vaciar
+                    </button>
+                )}
+            </div>
+
             {/* Items display */}
             {items.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 p-2 bg-[var(--color-dark-glass)] border border-dark rounded-lg min-h-[40px]">
-                    {items.map((item, index) => (
+                    {items.slice(0, MAX_VISIBLE_ITEMS).map((item, index) => (
                         <div
                             key={index}
                             className="flex items-center gap-1 px-2 py-1 glass-panel border border-pink-500/50 rounded text-xs text-white font-bold drop-shadow-sm"
@@ -157,9 +188,17 @@ export const ListField = ({ label, value, onChange, placeholder = "Enter value..
                             </button>
                         </div>
                     ))}
+                    {hiddenCount > 0 && (
+                        <div
+                            className="flex items-center px-2 py-1 rounded text-xs text-gray-400 italic border border-dashed border-white/15"
+                            title={`Se guardan los ${items.length} valores; solo se muestran los primeros ${MAX_VISIBLE_ITEMS}`}
+                        >
+                            +{hiddenCount} más
+                        </div>
+                    )}
                 </div>
             )}
-            
+
             {/* Add new item */}
             <div className="flex gap-2">
                 <input

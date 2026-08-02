@@ -34,6 +34,27 @@ const ICON_MAP: Record<string, React.ElementType> = {
     Box, Ampersand
 };
 
+/**
+ * One-line preview of a property value for the card body.
+ *
+ * The card only ever shows a single clipped line, but the whole value
+ * used to be written into the DOM and hidden with CSS — so a node
+ * holding a dataset column (`is_in`'s values, `contains_any`'s patterns:
+ * thousands of entries) put tens of kilobytes of text per card into the
+ * canvas, on every render. Cutting it here is invisible in the result
+ * and is what the clipping already implied.
+ */
+const MAX_PREVIEW_CHARS = 80;
+
+function summarizeValue(val: unknown): string {
+    if (Array.isArray(val)) {
+        const shown = val.slice(0, 5).map(String).join(", ");
+        return val.length > 5 ? `[${shown}, +${val.length - 5}]` : `[${shown}]`;
+    }
+    const text = typeof val === "object" && val !== null ? JSON.stringify(val) : String(val);
+    return text.length > MAX_PREVIEW_CHARS ? `${text.slice(0, MAX_PREVIEW_CHARS)}…` : text;
+}
+
 interface AstNodeCardProps {
     id: string;
     data: AstNodeData;
@@ -173,7 +194,7 @@ export const AstNodeCard = memo(({ id, data, selected, headerBadge }: AstNodeCar
                                 color: "#fff",
                                 fontWeight: "normal"
                             }}>
-                                {typeof val === "object" ? JSON.stringify(val) : String(val)}
+                                {summarizeValue(val)}
                             </span>
                         </div>
                     ))
