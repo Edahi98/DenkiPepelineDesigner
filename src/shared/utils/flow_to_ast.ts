@@ -1,7 +1,7 @@
 import type { Node, Edge } from "reactflow";
 import type { AstNodeData } from "../types/ast_types";
 import { buildBinaryOpChain, type ChainOp } from "./ast_wrappers";
-import { SERIES_NODE_TYPES } from "../algoritmos/series_types";
+import { BOOLEAN_MASK_SERIES_TYPES, SERIES_NODE_TYPES } from "../algoritmos/series_types";
 
 /**
  * Expression-building utilities shared by `graph_builder.ts`.
@@ -199,6 +199,124 @@ export function findDfBridgeSourceId(nodeId: string, nodes: Node<AstNodeData>[],
     return src && !src.data.isExpression ? e.source : undefined;
 }
 
+/**
+ * Canonicalises the edges around `combine_conditions`, so that neither
+ * which handle a condition was dropped on nor which way round the edge
+ * was drawn changes what the canvas means.
+ *
+ * A Boolean-mask node adjacent to a `combine_conditions` is one of its
+ * conditions — there is no other role it can play. Applying a boolean
+ * predicate *to* a boolean mask is meaningless, and the chain input
+ * exists only so conditions can borrow a column to evaluate against,
+ * which no Boolean node provides. So every such edge is rewritten to the
+ * canonical `condition -> combine_conditions` on `cond_in`.
+ *
+ * Direction is the whole meaning between two `combine_conditions` nodes
+ * (which one is the outer?), so those edges are left exactly as drawn.
+ *
+ * Rewriting the edge list up front means every traversal — leaf
+ * detection, `seriesChainIds`, `buildSeriesChain` — sees one shape and
+ * none of them needs its own special case. It also fixes leaf detection
+ * for free: a condition drawn hanging off the node's *output* used to
+ * have no outgoing edge of its own and so counted as a chain terminal,
+ * turning each condition into a separate graph output while leaving
+ * `combine_conditions` itself with an empty `conditions` list.
+ */
+export function normalizeCombineConditionEdges(
+    nodes: Node<AstNodeData>[],
+    edges: Edge[],
+): Edge[] {
+    const typeOf = (id: string) => nodes.find(n => n.id === id)?.data.nodeType;
+    const isCombine = (id: string) => typeOf(id) === "combine_conditions";
+    const isMask = (id: string) => {
+        const t = typeOf(id);
+        return !!t && t !== "combine_conditions" && BOOLEAN_MASK_SERIES_TYPES.has(t);
+    };
+
+    return edges.map(e => {
+        if (isCombine(e.source) && isMask(e.target)) {
+            return {
+                ...e,
+                source: e.target,
+                target: e.source,
+                sourceHandle: "dataflow-out",
+                targetHandle: "cond_in",
+            };
+        }
+        if (isCombine(e.target) && isMask(e.source) && e.targetHandle !== "cond_in") {
+            return { ...e, targetHandle: "cond_in" };
+        }
+        return e;
+    });
+}
+
+/**
+ * Splits a Series node's incoming edges into the single main-chain link
+ * that continues the chain, the `combine_conditions` conditions, and the
+ * remaining handle-addressed parameters (`append`'s "other",
+ * `series_filter`'s "predicate", ...).
+ *
+ * For every node type the *handle* decides: an edge on `expr-in` (or the
+ * legacy `dataflow-in`, or none at all) continues the chain, anything
+ * else names a parameter.
+ *
+ * `combine_conditions` is the deliberate exception, where the *kind* of
+ * the incoming node decides instead. Its two inputs — the chain link on
+ * the left and "conds" on top — are trivially easy to swap on the canvas,
+ * and both mis-drops used to fail silently or unrecognisably: a condition
+ * landing on the chain input was discarded outright (only one edge is
+ * ever read from there), and the chain link landing on "conds" turned the
+ * whole node into `pl.lit(True)` or made Polars complain about filtering
+ * strings by strings, several nodes away from the actual mistake. Since a
+ * Boolean-mask node is only ever a condition, and the chain input exists
+ * solely so conditions can borrow a column to evaluate against — a role no
+ * Boolean node can fill — the classification is unambiguous without the
+ * handle, so the handle is not consulted. Drop the edges wherever they
+ * land; the meaning is the same.
+ *
+ * `seriesChainRoot` here and `seriesChainIds` in `dag_builder.ts` both
+ * thread the chain through this function, so the ids and the serialized
+ * steps cannot disagree about a node's shape.
+ */
+export function classifySeriesInputs(
+    nodeId: string,
+    nodes: Node<AstNodeData>[],
+    edges: Edge[],
+): { mainEdge?: Edge; condEdges: Edge[]; paramEdges: Edge[] } {
+    const srcNode = (e: Edge) => nodes.find(n => n.id === e.source);
+    const fromSeries = edges.filter(e => {
+        if (e.target !== nodeId) return false;
+        const src = srcNode(e);
+        return !!src && isSeriesNode(src);
+    });
+
+    if (nodes.find(n => n.id === nodeId)?.data.nodeType === "combine_conditions") {
+        const isMask = (e: Edge) => {
+            const src = srcNode(e);
+            return !!src && BOOLEAN_MASK_SERIES_TYPES.has(src.data.nodeType);
+        };
+        // Left-to-right canvas order, so `NOT` (which uses conditions[0])
+        // and any future order-sensitive operator are deterministic.
+        const byPosition = (a: Edge, b: Edge) => {
+            const na = srcNode(a)!, nb = srcNode(b)!;
+            return na.position.x - nb.position.x || na.position.y - nb.position.y;
+        };
+        return {
+            mainEdge: fromSeries.filter(e => !isMask(e))[0],
+            condEdges: fromSeries.filter(isMask).sort(byPosition),
+            paramEdges: [],
+        };
+    }
+
+    const isChainLink = (e: Edge) =>
+        !e.targetHandle || e.targetHandle === "expr-in" || e.targetHandle === "dataflow-in";
+    return {
+        mainEdge: fromSeries.find(isChainLink),
+        condEdges: [],
+        paramEdges: fromSeries.filter(e => !isChainLink(e)),
+    };
+}
+
 /** Walks a Series chain's "main chain" link (the same one `buildSeriesChain`
  * threads) backward from `nodeId` to find its root. */
 export function seriesChainRoot(nodeId: string, nodes: Node<AstNodeData>[], edges: Edge[]): string {
@@ -206,11 +324,7 @@ export function seriesChainRoot(nodeId: string, nodes: Node<AstNodeData>[], edge
     const seen = new Set<string>();
     while (!seen.has(currentId)) {
         seen.add(currentId);
-        const mainEdge = edges.find(e => {
-            if (e.target !== currentId) return false;
-            const src = nodes.find(n => n.id === e.source);
-            return !!src && isSeriesNode(src) && (!e.targetHandle || e.targetHandle === "expr-in" || e.targetHandle === "dataflow-in");
-        });
+        const { mainEdge } = classifySeriesInputs(currentId, nodes, edges);
         if (!mainEdge) break;
         currentId = mainEdge.source;
     }
@@ -258,42 +372,56 @@ export function buildSeriesChain(
         delete stepJson.source;
         chain.unshift(stepJson);
 
-        // Find incoming edges from other Series nodes
-        const incomingEdges = edges.filter(e => e.target === currentNodeId);
+        // Split this node's incoming Series edges into the chain link, the
+        // conditions, and the named parameters (other, predicate, ...).
+        const { mainEdge, condEdges, paramEdges } = classifySeriesInputs(currentNodeId, nodes, edges);
 
-        // Check for property edges (e.g. values_series, patterns_series)
-        // These are incoming edges where the targetHandle is NOT expr-in
-        for (const edge of incomingEdges) {
-            if (edge.targetHandle && edge.targetHandle !== "expr-in" && edge.targetHandle !== "dataflow-in") {
-                const srcNode = nodes.find(n => n.id === edge.source);
-                if (srcNode && isSeriesNode(srcNode)) {
-                    if (externalRefs) {
-                        const rootId = seriesChainRoot(edge.source, nodes, edges);
-                        if (findDfBridgeSourceId(rootId, nodes, edges) !== undefined) {
-                            stepJson[edge.targetHandle] = edge.source;
-                            externalRefs.add(edge.source);
-                            continue;
-                        }
-                    }
-                    // It's a property chain, parse it and assign to the corresponding property
-                    const subchain = buildSeriesChain(edge.source, nodes, edges, externalRefs);
-                    if (subchain.length > 0) {
-                        stepJson[edge.targetHandle] = subchain.length === 1 ? subchain[0] : {
-                            type: "extract_series_chain",
-                            chain: subchain
-                        };
-                    }
+        for (const edge of paramEdges) {
+            const handle = edge.targetHandle as string;
+            if (externalRefs) {
+                const rootId = seriesChainRoot(edge.source, nodes, edges);
+                if (findDfBridgeSourceId(rootId, nodes, edges) !== undefined) {
+                    stepJson[handle] = edge.source;
+                    externalRefs.add(edge.source);
+                    continue;
                 }
             }
+            const subchain = buildSeriesChain(edge.source, nodes, edges, externalRefs);
+            if (subchain.length > 0) {
+                stepJson[handle] = subchain.length === 1 ? subchain[0] : {
+                    type: "extract_series_chain",
+                    chain: subchain
+                };
+            }
+        }
+        // Serialize the conditions as a single "conditions" array.
+        // Same externalRefs promotion as other secondary fields: when a condition's
+        // chain root bridges a real DataFrame, store the chain's terminal id as a
+        // string reference so the df_source link is preserved in the flat graph.
+        if (condEdges.length > 0) {
+            const conditionsArr: any[] = [];
+            for (const condEdge of condEdges) {
+                const condSource = condEdge.source;
+                if (externalRefs) {
+                    const rootId = seriesChainRoot(condSource, nodes, edges);
+                    if (findDfBridgeSourceId(rootId, nodes, edges) !== undefined) {
+                        conditionsArr.push(condSource);
+                        externalRefs.add(condSource);
+                        continue;
+                    }
+                }
+                const subchain = buildSeriesChain(condSource, nodes, edges, externalRefs);
+                if (subchain.length > 0) {
+                    conditionsArr.push(subchain.length === 1 ? subchain[0] : {
+                        type: "extract_series_chain",
+                        chain: subchain
+                    });
+                }
+            }
+            if (conditionsArr.length > 0) stepJson.conditions = conditionsArr;
         }
 
-        // Find the previous node in the MAIN chain
-        const seriesIncomingEdge = incomingEdges.find(e => {
-            const srcNode = nodes.find(n => n.id === e.source);
-            return srcNode && isSeriesNode(srcNode) && (!e.targetHandle || e.targetHandle === "expr-in" || e.targetHandle === "dataflow-in");
-        });
-
-        currentNodeId = seriesIncomingEdge ? seriesIncomingEdge.source : null;
+        currentNodeId = mainEdge ? mainEdge.source : null;
     }
 
     return chain;

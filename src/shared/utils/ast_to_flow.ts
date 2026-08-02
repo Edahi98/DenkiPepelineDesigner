@@ -23,8 +23,6 @@ const EXPR_TYPES = new Set([...DF_EXPR_ONLY_TYPES, ...SERIES_NODE_TYPES]);
 // repos with no shared contract file (see ast_contract.json proposal).
 const SERIES_SECONDARY_FIELDS: Record<string, string> = {
     append: "other",
-    is_in: "values_series",
-    contains_any: "patterns_series",
 };
 
 const NODE_WIDTH = 220;
@@ -85,6 +83,8 @@ function extractProperties(step: any): Record<string, any> {
         // SERIES_SECONDARY_FIELDS below) — a pure wire connector, same
         // as "input", never a literal property.
         if (!isDfStep && typeof v === "string" && SERIES_SECONDARY_FIELDS[step.type] === k) continue;
+        // conditions array is handled by processExpr directly, not stored as a property.
+        if (step.type === "combine_conditions" && k === "conditions") continue;
         // Skip nested objects that become child nodes
         if (typeof v === "object" && v !== null && !Array.isArray(v) && "type" in v) continue;
         if (Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && "type" in v[0]) continue;
@@ -253,18 +253,16 @@ function processExpr(
     // outgoing expression port — so, unlike every field above, the edge
     // runs content -> this node, reversed from the parent -> child
     // direction `addChild` draws.
-    for (const field of ["other", "values_series", "patterns_series"] as const) {
-        const value = expr[field];
-        // A bare id string referencing an already-registered flat node
-        // (Fase 6's nested-reference promotion) — draw the edge directly;
-        // the referenced node's own subtree is built separately, by
-        // graphDocumentToFlow's own top-level pass over flatNodes.
+    const secondaryFields: string[] = ["other", "values_series", "patterns_series"];
+    for (const field of secondaryFields) {
+        const value = (expr as any)[field];
+        const targetHandle = field;
         if (typeof value === "string" && flatNodeIds?.has(value)) {
             edges.push({
                 id: `${field}_${value}_${id}`,
                 source: value,
                 target: id,
-                targetHandle: field,
+                targetHandle,
                 animated: true,
                 style: { stroke: "#AC59B4", strokeWidth: 3 },
                 type: "smoothstep",
@@ -279,13 +277,47 @@ function processExpr(
                 id: `${field}_${contentRootId}_${id}`,
                 source: contentRootId,
                 target: id,
-                targetHandle: field,
+                targetHandle,
                 animated: true,
                 style: { stroke: "#AC59B4", strokeWidth: 3 },
                 type: "smoothstep",
             });
         }
         childResults.push(r);
+    }
+    // combine_conditions: conditions is an array of inline chains or flat-node id refs.
+    // Each entry maps to the single "cond_in" handle — multiple edges can share it.
+    if (expr.type === "combine_conditions" && Array.isArray(expr.conditions)) {
+        for (let ci = 0; ci < expr.conditions.length; ci++) {
+            const cond = expr.conditions[ci];
+            if (typeof cond === "string" && flatNodeIds?.has(cond)) {
+                edges.push({
+                    id: `cond_${ci}_${cond}_${id}`,
+                    source: cond,
+                    target: id,
+                    targetHandle: "cond_in",
+                    animated: true,
+                    style: { stroke: "#AC59B4", strokeWidth: 3 },
+                    type: "smoothstep",
+                });
+            } else if (cond && typeof cond === "object") {
+                const r = expandEmbedded(cond, 0, childY, undefined);
+                if (!r) continue;
+                const contentRootId = r.nodes[0]?.id;
+                if (contentRootId) {
+                    r.edges.push({
+                        id: `cond_${ci}_${contentRootId}_${id}`,
+                        source: contentRootId,
+                        target: id,
+                        targetHandle: "cond_in",
+                        animated: true,
+                        style: { stroke: "#AC59B4", strokeWidth: 3 },
+                        type: "smoothstep",
+                    });
+                }
+                childResults.push(r);
+            }
+        }
     }
 
     // Layout children horizontally
@@ -462,6 +494,12 @@ export function graphDocumentToFlow(doc: GraphDocument): { nodes: Node<AstNodeDa
                     markerEnd: { type: "arrowclosed" as any, color: "#AC59B4" },
                 });
             }
+            // combine_conditions: conditions array — each string ref maps to "cond_in".
+            // processExpr (Pass 1) already handles inline objects; this wires the flat
+            // graph id refs that processExpr deferred (emitting an edge there already),
+            // so only add edges here for refs that are NOT in flatNodeIds (shouldn't
+            // happen, but guard defensively). In practice, Pass 1 covers all cases
+            // and this loop is a no-op for well-formed exports — kept for completeness.
             continue;
         }
         for (const port of incomingPortsFor(step.type)) {

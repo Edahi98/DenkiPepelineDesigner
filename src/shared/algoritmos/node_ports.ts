@@ -126,31 +126,10 @@ export function outgoingPortsFor(nodeType: string): Port[] {
     return NODE_OUTGOING_PORTS[nodeType] ?? [];
 }
 
-/** Series-only secondary target handles (SERIES_EXTRA_TARGETS in
- * AstNodeCard.tsx, minus get_column's own "df_source") — each one
- * belongs to a Series host node and expects a Series source. */
-const SERIES_SECONDARY_HANDLES = new Set(["other", "values_series", "patterns_series"]);
-
-/**
- * Conservative connection validator for `<ReactFlow isValidConnection>`:
- * rejects only the kind-mismatches this registry can resolve with high
- * confidence (a DataFrame wired into an expression slot, an expression
- * wired into a DataFrame's own pipeline continuation, ...) — the same
- * class of mistake AUDITORIA_AST_BULMA_TSUBASA.md's F11 named as the
- * canvas's one un-caught error class, previously only surfacing once the
- * backend rejected the exported JSON.
- *
- * Deliberately permissive everywhere else: a DF/Expr node's own declared
- * outgoing expression port (filter's "predicate", select's "exprs", ...)
- * accepts either a plain ExprNode *or* a Series chain (embedded via the
- * `series_chain` wrapper `buildExprOrSeriesChain` produces) — there is
- * no single "right" node kind to check there, so it is left unrestricted
- * rather than guessing and blocking something valid.
- */
 export function isValidConnection(
     connection: { source: string | null; target: string | null; targetHandle?: string | null },
     nodes: { id: string; data: { isExpression: boolean; nodeType: string } }[],
-    isSeriesNode: (node: { data: { isExpression: boolean; nodeType: string } }) => boolean,
+    _isSeriesNode?: (node: { data: { isExpression: boolean; nodeType: string } }) => boolean,
 ): boolean {
     if (!connection.source || !connection.target) return true;
     if (connection.source === connection.target) return false;
@@ -159,38 +138,16 @@ export function isValidConnection(
     if (!src || !tgt) return true;
 
     const srcIsDf = !src.data.isExpression;
-    const srcIsSeries = src.data.isExpression && isSeriesNode(src);
     const targetHandle = connection.targetHandle ?? "dataflow-in";
 
-    // get_column's DataFrame bridge — always a DF source.
+    // get_column's DataFrame bridge — needs a DF source.
     if (targetHandle === "df_source") return srcIsDf;
 
-    // Chain-continuation / expression-child slot — never a raw DF node.
-    if (targetHandle === "expr-in") return !srcIsDf;
+    // to_frame accepts both DF and Series on its default port.
+    if (tgt.data.nodeType === "to_frame" && targetHandle === "dataflow-in") return true;
 
-    // append/is_in/contains_any's own secondary Series operand — always
-    // a Series source (only meaningful when the target is itself the
-    // Series host that declares it; guards against colliding with
-    // vstack/hstack's unrelated DFNode-typed "other").
-    if (tgt.data.isExpression && isSeriesNode(tgt) && SERIES_SECONDARY_HANDLES.has(targetHandle)) {
-        return srcIsSeries;
-    }
-
-    // to_frame's default "dataflow-in" is a deliberate exception: unlike
-    // every other DF node's incoming port, buildToFrameStep (dag_builder.ts)
-    // accepts a Series source directly there too — the fallback that lets
-    // a Series's own "out" wire straight into to_frame's "in" without
-    // routing through to_frame's dedicated "expr"/"cols" port.
-    if (tgt.data.nodeType === "to_frame" && targetHandle === "dataflow-in") {
-        return true;
-    }
-
-    // Any other target on a DataFrame node (default "dataflow-in", or a
-    // declared DF incoming port like join's "right"/vstack's "other") is
-    // the main pipeline continuation — always a DF source.
-    if (!tgt.data.isExpression) {
-        return srcIsDf;
-    }
+    // DF pipeline steps only accept DF sources on their pipeline ports.
+    if (!tgt.data.isExpression) return srcIsDf;
 
     return true;
 }
