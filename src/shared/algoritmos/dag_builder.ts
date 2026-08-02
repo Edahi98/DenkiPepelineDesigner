@@ -74,7 +74,7 @@ function seriesChainIds(terminalId: string, nodes: Node<AstNodeData>[], edges: E
 }
 
 /**
- * True when a Series chain's root is already claimed by an enclosing DF
+ * True when *any node of* a Series chain is already claimed by an enclosing DF
  * node's own declared outgoing expression port (`to_frame`'s "expr",
  * `with_columns`'s "exprs", `filter`'s "predicate", ...) — i.e. it will
  * be serialized *inline*, nested under that DF step, same as before
@@ -82,9 +82,10 @@ function seriesChainIds(terminalId: string, nodes: Node<AstNodeData>[], edges: E
  * deliberately excluded: that edge means "this is the chain's real
  * DataFrame", not "this chain is embedded inside me".
  */
-function isClaimedByDfBridge(rootId: string, nodes: Node<AstNodeData>[], edges: Edge[]): boolean {
+function isClaimedByDfBridge(chainIds: string[], nodes: Node<AstNodeData>[], edges: Edge[]): boolean {
+    const inChain = new Set(chainIds);
     return edges.some(e => {
-        if (e.target !== rootId || e.targetHandle === "df_source") return false;
+        if (!inChain.has(e.target) || e.targetHandle === "df_source") return false;
         const src = nodes.find(n => n.id === e.source);
         if (!src || src.data.isExpression || isSeriesNode(src)) return false;
         const outPorts = outgoingPortsFor(src.data.nodeType);
@@ -127,21 +128,24 @@ export function findLeafNodes(nodes: Node<AstNodeData>[], edges: Edge[]): Node<A
 
     // A Series node with NO outgoing edge at all — not consumed by
     // another Series node continuing the chain — is a *candidate*
-    // dangling terminal. It's a genuine leaf only if its chain's root
-    // also isn't already claimed inline by an enclosing DF bridge
-    // (to_frame/with_columns/...); otherwise it's already being
+    // dangling terminal. It's a genuine leaf only if no node *anywhere
+    // along its chain* is already claimed inline by an enclosing DF
+    // bridge (to_frame/with_columns/...); otherwise it's already being
     // serialized as that bridge's nested `chain`, and counting it again
-    // here would duplicate it as a second, independent output.
+    // here would duplicate it as a second, independent output. Checking
+    // only the root missed the case where the bridge is wired to the
+    // chain's terminal instead — which `buildToFrameStep` explicitly
+    // supports, so it is a normal thing to draw.
     const hasAnyOutgoingEdge = new Set(edges.map(e => e.source));
     const seriesLeaves = nodes.filter(n => {
         if (!isSeriesNode(n) || hasAnyOutgoingEdge.has(n.id) || isGroupedChild(n)) return false;
-        return !isClaimedByDfBridge(seriesChainIds(n.id, nodes, edges)[0], nodes, edges);
+        return !isClaimedByDfBridge(seriesChainIds(n.id, nodes, edges), nodes, edges);
     });
 
     return [...dfLeaves, ...seriesLeaves];
 }
 
-export function serializeGroupAsSubgraph(groupNodeIds: Set<string>, allNodes: Node<AstNodeData>[], allEdges: Edge[]): StepJSON {
+export function serializeGroupAsSubgraph(groupId: string, groupNodeIds: Set<string>, allNodes: Node<AstNodeData>[], allEdges: Edge[]): { steps: Record<string, StepJSON>; outputIds: string[] } {
     const internalEdges = allEdges.filter(e => groupNodeIds.has(e.source) && groupNodeIds.has(e.target));
     const incomingExternal = allEdges.filter(e => groupNodeIds.has(e.target) && !groupNodeIds.has(e.source));
 
@@ -170,12 +174,27 @@ export function serializeGroupAsSubgraph(groupNodeIds: Set<string>, allNodes: No
     const groupNodes = allNodes.filter(n => groupNodeIds.has(n.id)).concat(portNodes);
     const bodyDoc = buildGraphDocument(groupNodes, rewiredEdges);
 
-    return {
-        type: "subgraph",
-        body: bodyDoc.graph,
-        output: bodyDoc.graph.outputs[0],
-        bindings: ports,
-    };
+    // A SubGraphNode exposes exactly one of its body's outputs, because a
+    // DFNode evaluates to exactly one frame. A group whose body ends in
+    // several branches therefore needs one subgraph step per branch —
+    // taking `outputs[0]` and stopping, as this did, discarded every other
+    // branch in silence, with nothing on the canvas to suggest it.
+    // The single-output case keeps the group's own id so documents saved
+    // before this stay byte-identical.
+    const single = bodyDoc.graph.outputs.length <= 1;
+    const steps: Record<string, StepJSON> = {};
+    const outputIds: string[] = [];
+    for (const out of bodyDoc.graph.outputs) {
+        const stepId = single ? groupId : `${groupId}__${out}`;
+        steps[stepId] = {
+            type: "subgraph",
+            body: bodyDoc.graph,
+            output: out,
+            bindings: ports,
+        };
+        outputIds.push(stepId);
+    }
+    return { steps, outputIds };
 }
 
 // ─── Per-type base-property normalization ───────────────────────────
@@ -255,6 +274,8 @@ function buildBaseStep(type: string, properties: Record<string, any>): StepJSON 
 export class GraphDocumentBuilder {
     private readonly nodesById: Record<string, StepJSON> = {};
     private readonly visited = new Set<string>();
+    /** group node id -> the subgraph step ids exposing each of its branches. */
+    private readonly groupOutputIds: Record<string, string[]> = {};
     private readonly edges: Edge[];
 
     constructor(
@@ -444,7 +465,9 @@ export class GraphDocumentBuilder {
 
         if (node.type === "groupNode") {
             const childrenIds = new Set(this.nodes.filter(n => n.parentNode === id).map(n => n.id));
-            this.nodesById[id] = serializeGroupAsSubgraph(childrenIds, this.nodes, this.edges);
+            const { steps, outputIds } = serializeGroupAsSubgraph(id, childrenIds, this.nodes, this.edges);
+            Object.assign(this.nodesById, steps);
+            this.groupOutputIds[id] = outputIds;
             const incomingExternal = this.edges.filter(e => childrenIds.has(e.target) && !childrenIds.has(e.source));
             incomingExternal.forEach(e => this.addNode(e.source));
             return;
@@ -495,9 +518,28 @@ export class GraphDocumentBuilder {
         leaves.forEach(l => isSeriesNode(l) ? this.addSeriesNode(l.id) : this.addNode(l.id));
 
         const groupIdsInContext = new Set(this.nodes.filter(n => n.type === "groupNode").map(n => n.id));
-        const outputs = Array.from(new Set(leaves.map(l =>
-            l.parentNode && groupIdsInContext.has(l.parentNode) ? l.parentNode : l.id
-        )));
+        const outputs = Array.from(new Set(leaves.flatMap(l => {
+            // A group contributes one output per branch its body ends in,
+            // not one for the group as a whole.
+            if (this.groupOutputIds[l.id]) return this.groupOutputIds[l.id];
+            return [l.parentNode && groupIdsInContext.has(l.parentNode) ? l.parentNode : l.id];
+        })));
+
+        // No outputs means nothing on this canvas can be executed, and an
+        // empty document produces neither a result nor an error — the run
+        // just appears to do nothing. The usual cause is a canvas built
+        // entirely out of DF-level expression nodes (col, lit, binary, …),
+        // which have no standalone execution semantics: they only mean
+        // something plugged into a DataFrame step's expression port.
+        if (outputs.length === 0) {
+            const hint = this.nodes.length === 0
+                ? "El canvas está vacío."
+                : this.nodes.every(n => n.data.isExpression && !isSeriesNode(n))
+                    ? "Solo hay nodos de expresión (col, lit, binary, …), que no se ejecutan por sí solos: " +
+                      "conéctalos al puerto de expresión de un nodo DataFrame (filter, select, with_columns…)."
+                    : "Revisa que la cadena termine en un nodo sin conexiones de salida.";
+            throw new Error(`No hay nada que ejecutar en este canvas. ${hint}`);
+        }
 
         return { graph: { nodes: this.nodesById, outputs } };
     }

@@ -66,6 +66,11 @@ export const SERIES_NODE_TYPES: ReadonlySet<string> = new Set([
     "struct_field", "struct_rename_fields", "struct_unnest", "struct_json_encode",
     // Bitwise
     "bitwise_and", "bitwise_or", "bitwise_xor",
+    // Binary ops between two Series (or a Series and a scalar)
+    "series_arith", "series_compare",
+    // Naming a chain. Distinct from the DF-level "alias" expression,
+    // which owns that type string in this editor.
+    "series_alias",
 ]);
 
 /**
@@ -80,7 +85,7 @@ export const BOOLEAN_MASK_SERIES_TYPES: ReadonlySet<string> = new Set([
     "arr_contains", "combine_conditions", "contains_any", "dt_is_leap_year",
     "is_between", "is_duplicated", "is_finite", "is_in", "is_infinite",
     "is_nan", "is_not_null", "is_null", "is_unique", "peak_max", "peak_min",
-    "str_contains", "str_ends_with", "str_starts_with",
+    "series_compare", "str_contains", "str_ends_with", "str_starts_with",
 ]);
 
 /**

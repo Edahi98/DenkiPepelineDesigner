@@ -562,6 +562,24 @@ export const NODE_FORM_SCHEMAS: Record<string, NodeFormEntry> = {
         { kind: "text", key: "bins", label: "Bins", placeholder: "e.g. 10", getValue: (c) => c.editValues.bins !== undefined ? String(c.editValues.bins) : "10", onChange: (v, c) => c.handleFieldChange("bins", numberField(v, 10)) },
         titleField(),
     ],
+    branch: [
+        { kind: "select", key: "condition", label: "Condition", options: ["has_column", "has_all_columns", "has_any_column", "column_dtype", "min_columns"], getValue: (c) => c.editValues.condition || "has_column", onChange: (v, c) => c.handleFieldChange("condition", v) },
+        { kind: "select", key: "column", label: "Column", options: (c) => c.columnOptions, when: (c) => ["has_column", "column_dtype"].includes(c.editValues.condition || "has_column"), getValue: (c) => c.editValues.column || "", onChange: (v, c) => c.handleFieldChange("column", v) },
+        { kind: "multiselect", key: "columns", label: "Columns", options: (c) => c.availableColumns, when: (c) => ["has_all_columns", "has_any_column"].includes(c.editValues.condition), getValue: (c) => Array.isArray(c.editValues.columns) ? c.editValues.columns : [], onChange: (v, c) => c.handleFieldChange("columns", v) },
+        { kind: "text", key: "dtype", label: "Dtype", placeholder: "e.g. Int64", when: (c) => c.editValues.condition === "column_dtype", getValue: (c) => c.editValues.dtype || "", onChange: (v, c) => c.handleFieldChange("dtype", v) },
+        { kind: "text", key: "n", label: "Minimum columns", placeholder: "e.g. 2", when: (c) => c.editValues.condition === "min_columns", getValue: (c) => c.editValues.n !== undefined ? String(c.editValues.n) : "1", onChange: (v, c) => c.handleFieldChange("n", numberField(v, 1)) },
+    ],
+    series_alias: [nameField("Series Name", "e.g. importe")],
+    // The right operand is optional: wire a Series to the `right` handle,
+    // or leave it unwired and this value is used instead.
+    series_compare: [
+        { kind: "select", key: "op", label: "Operator", options: ["==", "!=", ">", ">=", "<", "<="], getValue: (c) => c.editValues.op || ">", onChange: (v, c) => c.handleFieldChange("op", v) },
+        { kind: "text", key: "value", label: "Value (if no 'right' connected)", placeholder: "e.g. 100", getValue: (c) => c.editValues.value === undefined || c.editValues.value === null ? "" : String(c.editValues.value), onChange: (v, c) => c.handleFieldChange("value", v.trim() === "" ? null : (Number.isNaN(Number(v)) ? v : Number(v))) },
+    ],
+    series_arith: [
+        { kind: "select", key: "op", label: "Operator", options: ["+", "-", "*", "/", "//", "%", "**"], getValue: (c) => c.editValues.op || "+", onChange: (v, c) => c.handleFieldChange("op", v) },
+        { kind: "text", key: "value", label: "Value (if no 'right' connected)", placeholder: "e.g. 2", getValue: (c) => c.editValues.value === undefined || c.editValues.value === null ? "" : String(c.editValues.value), onChange: (v, c) => c.handleFieldChange("value", v.trim() === "" ? null : (Number.isNaN(Number(v)) ? v : Number(v))) },
+    ],
     bokeh_confusion_matrix: [
         { kind: "select", key: "y_true", label: "True Column", options: (c) => c.columnOptions, getValue: (c) => c.editValues.y_true || "", onChange: (v, c) => c.handleFieldChange("y_true", v) },
         { kind: "select", key: "y_pred", label: "Predicted Column", options: (c) => c.columnOptions, getValue: (c) => c.editValues.y_pred || "", onChange: (v, c) => c.handleFieldChange("y_pred", v) },

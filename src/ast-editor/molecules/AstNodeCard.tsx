@@ -225,6 +225,10 @@ const SERIES_EXTRA_TARGETS: Record<string, { handleId: string; label: string }[]
     is_in: [{ handleId: "values_series", label: "values" }],
     contains_any: [{ handleId: "patterns_series", label: "patterns" }],
     series_filter: [{ handleId: "predicate", label: "pred" }],
+    // Right operand of a binary Series op. Optional: leave it unwired and
+    // the node uses the scalar typed in the panel instead.
+    series_arith: [{ handleId: "right", label: "right" }],
+    series_compare: [{ handleId: "right", label: "right" }],
     // get_column is the DF -> Series bridge: this is the real DataFrame
     // the column is read from. dag_builder.ts's findDfBridgeSource reads
     // this same handle id to wire the backend's df_source. Rendered as

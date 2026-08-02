@@ -74,6 +74,72 @@ export type FieldSpec = TextSpec | SelectSpec | MultiSelectSpec | SwitchSpec | L
  */
 export type NodeFormEntry = FieldSpec[] | ((ctx: FormContext) => ReactNode);
 
+/**
+ * Field specs derived from a node's own properties, for types with no
+ * hand-written entry in `NODE_FORM_SCHEMAS`.
+ *
+ * Without this a node carrying editable properties but no registered
+ * form told the user "este tipo de nodo no requiere propiedades" and
+ * gave them nothing to edit — the properties were real, reachable by the
+ * serializer and meaningful to Tsubasa, just not reachable by the person
+ * using the app. Deriving the fields from the values themselves covers
+ * every such type at once, including any added later, instead of the
+ * list being kept in sync by hand and quietly falling behind.
+ *
+ * A hand-written entry always wins: it knows the column pickers, the
+ * enumerated options and the cross-field rules this cannot infer. This
+ * is the floor, not the ceiling.
+ */
+export function inferFieldSpecs(properties: Record<string, any>): FieldSpec[] {
+    const label = (key: string) =>
+        key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+    return Object.keys(properties).map((key): FieldSpec => {
+        const value = properties[key];
+
+        if (typeof value === "boolean") {
+            return {
+                kind: "switch", key, label: label(key),
+                getValue: (c) => !!c.editValues[key],
+                onChange: (v, c) => c.handleFieldChange(key, v),
+            };
+        }
+
+        // Arrays, and the JSON-encoded strings several nodes store them as,
+        // get the list editor rather than one long unparseable text box.
+        const isList = Array.isArray(value)
+            || (typeof value === "string" && value.trim().startsWith("["));
+        if (isList) {
+            return {
+                kind: "list", key, label: label(key), placeholder: `Add ${label(key)}...`,
+                getValue: (c) => {
+                    const v = c.editValues[key];
+                    return typeof v === "string" ? v : JSON.stringify(v ?? []);
+                },
+                onChange: (v, c) => c.handleFieldChange(key, v),
+            };
+        }
+
+        const isNumber = typeof value === "number";
+        return {
+            kind: "text", key, label: label(key),
+            placeholder: isNumber ? "e.g. 1" : "",
+            getValue: (c) => {
+                const v = c.editValues[key];
+                return v === undefined || v === null ? "" : String(v);
+            },
+            onChange: (v, c) => {
+                if (!isNumber) return c.handleFieldChange(key, v);
+                // Keep an empty box meaning "unset" rather than 0, which is a
+                // meaningful value for offsets, seeds and window sizes alike.
+                if (v.trim() === "") return c.handleFieldChange(key, null);
+                const n = Number(v);
+                c.handleFieldChange(key, Number.isNaN(n) ? v : n);
+            },
+        };
+    });
+}
+
 function resolve<T>(value: T | ((ctx: FormContext) => T), ctx: FormContext): T {
     return typeof value === "function" ? (value as (ctx: FormContext) => T)(ctx) : value;
 }

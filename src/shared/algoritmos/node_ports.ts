@@ -59,13 +59,30 @@ export const NODE_INCOMING_PORTS: Record<string, Port[]> = {
     // Tsubasa's StackNode (polars_ast/df_nodes.py) wires its second
     // DataFrame through the "other" field/wire-key — same shape as a
     // join's "right", just a different backend key.
+    // Stacking is associative, so it takes as many frames as you wire in:
+    // `other` keeps the two-frame shape every saved graph already uses,
+    // and `others` collects the rest (Tsubasa's StackNode reads both).
+    // Before this, a three-way stack meant chaining two nodes for what is
+    // one operation.
     vstack: [
         { handleId: "input", field: "input", arity: "single", label: "in" },
         { handleId: "other", field: "other", arity: "single", label: "other" },
+        { handleId: "others", field: "others", arity: "list", label: "+" },
     ],
     hstack: [
         { handleId: "input", field: "input", arity: "single", label: "in" },
         { handleId: "other", field: "other", arity: "single", label: "other" },
+        { handleId: "others", field: "others", arity: "list", label: "+" },
+    ],
+    // Structural if/else. `then`/`otherwise` each take a *group* node,
+    // which serializes to a `subgraph` step — Tsubasa's BranchNode binds
+    // its own upstream frame into the chosen branch's input port and
+    // delegates. Incoming ports, like a join's `right`: the branch reads
+    // the pipelines, it does not push expressions into them.
+    branch: [
+        { handleId: "input", field: "input", arity: "single", label: "in" },
+        { handleId: "then", field: "then", arity: "single", label: "then" },
+        { handleId: "otherwise", field: "otherwise", arity: "single", label: "else" },
     ],
 };
 

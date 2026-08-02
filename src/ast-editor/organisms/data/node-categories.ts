@@ -161,6 +161,7 @@ export const CATEGORIES: Category[] = [
             { type: "top_k", label: "Top K", description: "Keep the K largest rows by column(s)", isExpression: false, presetProperties: { k: 5, by: "" } },
             { type: "bottom_k", label: "Bottom K", description: "Keep the K smallest rows by column(s)", isExpression: false, presetProperties: { k: 5, by: "" } },
             { type: "collect", label: "Collect", description: "Materialize the LazyFrame (checkpoint)", isExpression: false },
+            { type: "branch", label: "Branch (if/else)", description: "Pick one of two grouped pipelines from the shape of the incoming schema", isExpression: false, presetProperties: { condition: "has_column", column: "" } },
             { type: "describe", label: "Describe", description: "Statistical summary of the DataFrame", isExpression: false }
         ]
     },
@@ -271,6 +272,7 @@ export const CATEGORIES: Category[] = [
         items: [
             { type: "is_null", label: "Is Null", description: "Boolean mask for nulls", isExpression: true },
             { type: "is_not_null", label: "Is Not Null", description: "Boolean mask for non-nulls", isExpression: true },
+            { type: "is_nan", label: "Is NaN", description: "Boolean mask for NaN (floats only — null is not NaN)", isExpression: true },
             { type: "fill_null", label: "Fill Null", description: "Replace null values", isExpression: true, presetProperties: { value: null, strategy: null, limit: null } },
             { type: "fill_nan", label: "Fill NaN", description: "Replace NaN values", isExpression: true, presetProperties: { value: 0 } },
             { type: "drop_nulls", label: "Drop Nulls", description: "Remove null values", isExpression: true },
@@ -347,6 +349,8 @@ export const CATEGORIES: Category[] = [
         items: [
             { type: "hash", label: "Hash", description: "Hash each element", isExpression: true, presetProperties: { seed: 0, seed_1: null, seed_2: null, seed_3: null } },
             { type: "rechunk", label: "Rechunk", description: "Rechunk memory", isExpression: true },
+            { type: "strict_cast", label: "Strict Cast", description: "Change dtype, failing instead of nulling on overflow", isExpression: true, presetProperties: { dtype: "Int32" } },
+            { type: "to_physical", label: "To Physical", description: "Underlying physical representation (Categorical to its codes, Date to days)", isExpression: true },
             { type: "append", label: "Append", description: "Append another Series", isExpression: true, presetProperties: { other: null, upcast: true } },
             { type: "lower_bound", label: "Lower Bound", description: "Dtype lower bound", isExpression: true },
             { type: "upper_bound", label: "Upper Bound", description: "Dtype upper bound", isExpression: true },
@@ -361,7 +365,10 @@ export const CATEGORIES: Category[] = [
             { type: "is_duplicated", label: "Is Duplicated", description: "Check duplicates", isExpression: true },
             { type: "unique", label: "Unique", description: "Drop duplicates", isExpression: true, presetProperties: { maintain_order: false } },
             { type: "series_filter", label: "Filter (Series)", description: "Filter Series by predicate", isExpression: true, presetProperties: { self_filter: false } },
-            { type: "combine_conditions", label: "Combine Conditions", description: "Combine multiple boolean series with AND/OR/XOR/NOT", isExpression: true, presetProperties: { operator: "AND" } }
+            { type: "combine_conditions", label: "Combine Conditions", description: "Combine multiple boolean series with AND/OR/XOR/NOT", isExpression: true, presetProperties: { operator: "AND" } },
+            { type: "series_compare", label: "Compare", description: "Boolean mask comparing this Series against a value or another Series", isExpression: true, presetProperties: { op: ">", value: 0 } },
+            { type: "series_arith", label: "Arithmetic", description: "Arithmetic between this Series and a value or another Series", isExpression: true, presetProperties: { op: "+", value: 0 } },
+            { type: "series_alias", label: "Name Series", description: "Name this Series chain, so its output tab is identifiable", isExpression: true, presetProperties: { name: "" } }
         ]
     },
     {
@@ -421,7 +428,15 @@ export const CATEGORIES: Category[] = [
             { type: "dt_offset_by", label: "Offset By", description: "Offset by duration", isExpression: true, presetProperties: { by: "1d" } },
             { type: "dt_is_leap_year", label: "Is Leap Year", description: "Check leap year", isExpression: true },
             { type: "dt_days_in_month", label: "Days in Month", description: "Days in month", isExpression: true },
-            { type: "dt_quarter", label: "Quarter", description: "Quarter (1-4)", isExpression: true }
+            { type: "dt_quarter", label: "Quarter", description: "Quarter (1-4)", isExpression: true },
+            { type: "dt_combine", label: "Combine", description: "Combine a date with a time into a datetime", isExpression: true, presetProperties: { time: "00:00:00", time_unit: "us" } },
+            { type: "dt_total_days", label: "Total Days", description: "Duration as whole days", isExpression: true },
+            { type: "dt_total_hours", label: "Total Hours", description: "Duration as whole hours", isExpression: true },
+            { type: "dt_total_minutes", label: "Total Minutes", description: "Duration as whole minutes", isExpression: true },
+            { type: "dt_total_seconds", label: "Total Seconds", description: "Duration as whole seconds", isExpression: true },
+            { type: "dt_total_milliseconds", label: "Total Milliseconds", description: "Duration as whole milliseconds", isExpression: true },
+            { type: "dt_total_microseconds", label: "Total Microseconds", description: "Duration as whole microseconds", isExpression: true },
+            { type: "dt_total_nanoseconds", label: "Total Nanoseconds", description: "Duration as whole nanoseconds", isExpression: true }
         ]
     },
     {

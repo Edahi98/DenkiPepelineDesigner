@@ -6,7 +6,7 @@ import type { AstNodeData } from "../../shared/types/ast_types";
 import { NodeHeader } from "../molecules/NodeHeader";
 import { getNodeMetadata, nodeSupportsSql } from "../../shared/utils/node_metadata";
 import { NODE_FORM_SCHEMAS } from "./node-form/node-form-schemas";
-import { renderFieldSpecs, type FormContext } from "./node-form/field-spec";
+import { renderFieldSpecs, inferFieldSpecs, type FormContext } from "./node-form/field-spec";
 import { useNodeFormState } from "./hooks/useNodeFormState";
 
 const MIN_WIDTH = 280;
@@ -65,7 +65,11 @@ export const NodePanel = ({
         const type = node.data.nodeType;
         const entry = NODE_FORM_SCHEMAS[type];
 
-        if (!entry) {
+        // No hand-written schema: derive the fields from the node's own
+        // properties rather than claiming it has none. Only a node that
+        // genuinely carries no properties gets the empty-state message.
+        const inferred = entry ? null : inferFieldSpecs(node.data.properties ?? {});
+        if (inferred && inferred.length === 0) {
             return (
                 <div className="text-gray-200 font-semibold italic text-sm text-center py-4">
                     Este tipo de nodo ({type}) no requiere propiedades o es controlado visualmente por conexiones.
@@ -84,6 +88,7 @@ export const NodePanel = ({
             allEdges,
         };
 
+        if (inferred) return renderFieldSpecs(inferred, ctx);
         return typeof entry === "function" ? entry(ctx) : renderFieldSpecs(entry, ctx);
     };
 

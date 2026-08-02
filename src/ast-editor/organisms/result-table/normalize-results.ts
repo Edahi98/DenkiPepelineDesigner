@@ -27,6 +27,9 @@ function isSeriesOutput(out: DataframeResult | SeriesResult): out is SeriesResul
     return "values" in out;
 }
 
+/** Name Tsubasa gives an unnamed Series output (`SeriesNode.name or "_s"`). */
+const PLACEHOLDER_SERIES_NAME = "_s";
+
 export function normalizeResults(result: ExecutionResult | null): NamedResult[] {
     if (!result) return [];
 
@@ -34,7 +37,13 @@ export function normalizeResults(result: ExecutionResult | null): NamedResult[] 
         return Object.entries(result.outputs).map(([name, out]) => {
             if (isSeriesOutput(out)) {
                 return {
-                    name: out.name || name,
+                    // The graph key is unique per output; a Series name is
+                    // not, and unnamed ones all arrive as the backend's "_s"
+                    // placeholder — so a graph with several Series branches
+                    // showed several tabs labelled "_s", with no way to tell
+                    // which branch was which. Use the name only when it is a
+                    // real one (wire a `series_alias` node to set it).
+                    name: out.name && out.name !== PLACEHOLDER_SERIES_NAME ? out.name : name,
                     kind: "series" as const,
                     columns: [],
                     rows: [],
